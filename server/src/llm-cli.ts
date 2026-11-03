@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { PermanentError } from './util.ts'
+import { LIMIT_TEXT, PermanentError, RateLimited, parseResetMs } from './util.ts'
 
 const MAX_OUTPUT = 2 * 1024 * 1024
 /** What the program is allowed to see of this server's environment. Never the tokens, keys or secrets the server holds. */
@@ -43,6 +43,7 @@ export async function runCli(command: string[], prompt: string, options: { timeo
       child.on('close', code => {
         clearTimeout(timer)
         if (over) reject(new Error(`${program} printed more than ${MAX_OUTPUT} bytes.`))
+        else if (code !== 0 && LIMIT_TEXT.test(`${err}\n${out}`)) reject(new RateLimited(`${program} says its usage limit is reached. ${`${err} ${out}`.replace(/\s+/g, ' ').trim().slice(-200)}`, parseResetMs(new Headers(), `${err}\n${out}`)))
         else if (code !== 0) reject(new Error(`${program} exited with code ${code}. ${err.trim().slice(-400)}`.trim()))
         else resolve(out)
       })

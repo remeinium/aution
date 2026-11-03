@@ -52,7 +52,7 @@ async function body(request: IncomingMessage): Promise<Buffer> {
 }
 
 export interface Fake { url: string; requests: Array<{ path: string; fields: Record<string, string>; json?: any }>; close: () => Promise<void>; respond: (handler: (index: number) => FakeReply | null) => void }
-export type FakeReply = { status?: number; body: unknown; delayMs?: number }
+export type FakeReply = { status?: number; body: unknown; delayMs?: number; headers?: Record<string, string> }
 
 async function fake(handle: (request: IncomingMessage, raw: Buffer, record: Fake['requests'][number], index: number) => Promise<FakeReply>): Promise<Fake> {
   const requests: Fake['requests'] = []
@@ -64,7 +64,7 @@ async function fake(handle: (request: IncomingMessage, raw: Buffer, record: Fake
     const index = requests.length - 1
     const reply = override?.(index) ?? (await handle(request, raw, record, index))
     if (reply.delayMs) await new Promise(done => setTimeout(done, reply.delayMs))
-    response.writeHead(reply.status ?? 200, { 'Content-Type': 'application/json' })
+    response.writeHead(reply.status ?? 200, { 'Content-Type': 'application/json', ...reply.headers })
     response.end(typeof reply.body === 'string' ? reply.body : JSON.stringify(reply.body))
   })
   await new Promise<void>(done => server.listen(0, '127.0.0.1', done))

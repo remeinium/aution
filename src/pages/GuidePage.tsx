@@ -142,6 +142,7 @@ bearer_token_env_var = "VOICEBRAIN_KEY"`}</pre>
           <dt>“Google Drive is not connected.”</dt><dd>Open Settings and tap Connect Google Drive. This also happens if you removed voicebrain’s access in your Google account.</dd>
           <dt>ChatGPT cannot see my notes.</dt><dd>Check voicebrain is listed under Installed on ChatGPT’s Plugins page, and that you signed in with the same Google account as here. Try asking “Using voicebrain, …”.</dd>
           <dt>My note is called “Voice note” and has no tasks.</dt><dd>It is written down but ChatGPT has not sorted it yet. Open ChatGPT with voicebrain connected and say “Sort my new voicebrain notes.” ChatGPT may ask you to allow saving; that is its own safety step.</dd>
+          <dt>Notes stay “Voice note” even though the server sorts automatically.</dt><dd>The AI service the server uses may have reached its usage limit. Nothing is lost: your notes are written down and searchable, and they are sorted by themselves as soon as the limit resets.</dd>
           <dt>ChatGPT only uses voicebrain when I ask it to.</dt><dd>Add the custom instruction from step 5 (Personalization → Custom instructions). Until then you can always say “Using voicebrain, …”.</dd>
           <dt>ChatGPT does not know about a new feature.</dt><dd>Open the Plugins page and press the refresh button next to Add.</dd>
           <dt>The app looks old.</dt><dd>Close it completely and open it again. It updates itself in the background.</dd>

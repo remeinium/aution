@@ -1,8 +1,8 @@
 import type { Brain } from './brain.ts'
-import { digestNote } from './digest.ts'
+import { digestNote, type DigestProgress } from './digest.ts'
 import { transcribeBytes, type Fetch } from './stt.ts'
 import type { Digest, NoteState } from './types.ts'
-import { NoteGone, PermanentError, errorText, retryDelayMs } from './util.ts'
+import { NoteGone, PermanentError, RateLimited, errorText, limitWaitMs, retryDelayMs } from './util.ts'
 
 export interface PipelineOptions { fetch?: Fetch; retryDelay?: (attempts: number) => number; log?: (message: string) => void }
 
@@ -11,6 +11,8 @@ export interface PipelineStatus {
   waiting: number
   /** Written down and searchable, but not yet sorted into tasks and ideas by the assistant. */
   awaitingAssistant: number
+  /** When sorting carries on after an AI service's usage limit (ISO time), or null when it is not waiting. */
+  sortingPausedUntil: string | null
   failed: Array<{ id: string; stage: string | null; error: string | null }>
   needs: string[]
 }
@@ -25,6 +27,10 @@ export class Pipeline {
   private running: Promise<void> | null = null
   private again = false
   private stopped = false
+  /** While the AI service's usage limit holds, no note is sent to it (every note would just be refused). */
+  private pausedUntil = 0
+  /** How many limits in a row, for when the service does not say when it frees up. */
+  private limitStreak = 0
 
   constructor(brain: Brain, options: PipelineOptions = {}) {
     this.brain = brain
@@ -79,7 +85,7 @@ export class Pipeline {
     }
     const needs: string[] = []
     if (!config.stt) needs.push('STT_BASE_URL (voice notes cannot be transcribed yet)')
-    return { notes: ids.length, waiting, awaitingAssistant: index.waitingCount(), failed, needs }
+    return { notes: ids.length, waiting, awaitingAssistant: index.waitingCount(), sortingPausedUntil: this.pausedUntil > Date.now() ? new Date(this.pausedUntil).toISOString() : null, failed, needs }
   }
 
   private async pass(): Promise<void> {
@@ -91,6 +97,32 @@ export class Pipeline {
     try { await this.brain.store.releaseAudio(id) } catch (error) {
       if (!(error instanceof NoteGone)) this.log(`could not release the local audio of ${id.slice(0, 8)}: ${errorText(error)}`)
     }
+  }
+
+  /** Saves the finished pieces of a long recording in the note's own folder, so a limit half way does not lose them. */
+  private progressOf(id: string): DigestProgress {
+    const { store } = this.brain
+    return {
+      load: async key => { const saved = await store.progress(id); return saved?.key === key && Array.isArray(saved.parts) ? (saved.parts as Awaited<ReturnType<DigestProgress['load']>>) : [] },
+      save: (key, parts) => store.writeProgress(id, { key, parts }),
+    }
+  }
+
+  /**
+   * The AI service said its usage limit is reached. Nothing is lost and nothing is counted against the note: everything
+   * done so far is saved, no other note is sent to the service until the limit should be over, and the note carries on by
+   * itself then (also after a restart, because the time is saved with the note).
+   */
+  private async waitForLimit(id: string, state: NoteState, stage: NoteState['stage'], error: RateLimited): Promise<void> {
+    this.limitStreak += 1
+    const wait = limitWaitMs(error.retryAfterMs, this.limitStreak)
+    const until = Date.now() + wait
+    const first = this.pausedUntil < Date.now()
+    this.pausedUntil = Math.max(this.pausedUntil, until)
+    const minutes = Math.ceil(wait / 60_000)
+    const how = minutes >= 120 ? `about ${Math.round(minutes / 60)} hours` : minutes >= 2 ? `about ${minutes} minutes` : 'a minute'
+    if (first || until > this.pausedUntil - 1) this.log(`the AI service is at its usage limit; sorting waits ${how} and then carries on by itself (${errorText(error).slice(0, 160)})`)
+    await this.brain.store.writeState(id, { attempts: state.attempts, nextAttemptAt: until, lastError: `Waiting for the AI service's usage limit to reset. Sorting carries on by itself in ${how}.`, failed: false, stage })
   }
 
   private async process(id: string): Promise<void> {
@@ -120,7 +152,10 @@ export class Pipeline {
         // configured here a note simply stays filed and searchable until it does. Silence needs no sorting.
         stage = 'digest'
         if (transcript.suspectedSilence) digest = silentDigest(meta.title)
-        else if (config.llm) digest = await digestNote(config.llm, meta, transcript, index.knownEntities(), this.fetch)
+        else if (config.llm && Date.now() >= this.pausedUntil) {
+          digest = await digestNote(config.llm, meta, transcript, index.knownEntities(), this.fetch, this.progressOf(id))
+          this.limitStreak = 0
+        }
         if (digest) {
           await store.writeDigest(id, digest)
           worked = true
@@ -134,6 +169,7 @@ export class Pipeline {
       if (state.attempts || state.lastError) await store.writeState(id, { attempts: 0, nextAttemptAt: null, lastError: null, failed: false, stage: null })
     } catch (error) {
       if (error instanceof NoteGone || !(await store.has(id))) return // deleted while we were working on it
+      if (error instanceof RateLimited) { await this.waitForLimit(id, state, stage, error); return }
       const attempts = state.attempts + 1
       const permanent = error instanceof PermanentError || attempts >= config.maxAttempts
       this.log(`${stage ?? 'process'} failed for ${id.slice(0, 8)} (attempt ${attempts}${permanent ? ', giving up' : ''}): ${errorText(error)}`)

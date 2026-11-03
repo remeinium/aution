@@ -2,7 +2,7 @@ import type { Config } from './config.ts'
 import { runCli } from './llm-cli.ts'
 import type { Fetch } from './stt.ts'
 import type { Digest, Mention, NoteMeta, Priority, Quoted, Task, Transcript } from './types.ts'
-import { PermanentError, errorText, localParts, slugify, withKeys } from './util.ts'
+import { LIMIT_TEXT, PermanentError, RateLimited, errorText, localParts, parseResetMs, slugify, withKeys } from './util.ts'
 
 type Llm = NonNullable<Config['llm']>
 
@@ -112,6 +112,22 @@ export function extractJson(content: string): unknown {
 
 const retryableStatus = (status: number) => status === 408 || status === 425 || status === 429 || status === 529 || status >= 500
 
+const OUT_OF_CREDIT = /insufficient[_ ]quota|exceeded your current quota|credit balance is too low|out of credits?|payment required|billing/i
+
+/**
+ * Turns "usage limit reached" into a RateLimited the pipeline waits out instead of failing. That covers a 429 (a rate or
+ * daily limit), a 402, and the 400 some services send for an empty balance. An empty balance never frees itself, so it is
+ * checked again hourly (someone may top it up) unless the service says otherwise.
+ */
+async function limitFrom(response: Response, label: string): Promise<RateLimited | null> {
+  const body = (await response.text().catch(() => '')).slice(0, 2000)
+  const credit = OUT_OF_CREDIT.test(body) || response.status === 402
+  if (response.status !== 429 && !(credit && (response.status === 402 || response.status === 400))) return null
+  const said = parseResetMs(response.headers, body)
+  const detail = body.replace(/\s+/g, ' ').slice(0, 200)
+  return new RateLimited(`${label} ${credit ? 'is out of credit' : 'usage limit reached'}. ${detail}`.trim(), said ?? (credit ? 3_600_000 : null))
+}
+
 /** Anthropic's Messages API. */
 async function anthropicJson(config: Llm, system: string, user: string, fetchImpl: Fetch): Promise<unknown> {
   let response: Response
@@ -124,6 +140,8 @@ async function anthropicJson(config: Llm, system: string, user: string, fetchImp
     }))
   } catch (error) { throw new Error(`Language model unreachable: ${errorText(error)}`) }
   if (!response.ok) {
+    const limit = await limitFrom(response.clone(), 'The AI service')
+    if (limit) throw limit
     const detail = (await response.text().catch(() => '')).slice(0, 300)
     const message = `Language model answered ${response.status}. ${detail}`.trim()
     throw retryableStatus(response.status) ? new Error(message) : new PermanentError(message)
@@ -138,6 +156,8 @@ async function anthropicJson(config: Llm, system: string, user: string, fetchImp
 async function cliJson(config: Llm, system: string, user: string): Promise<unknown> {
   const output = await runCli(config.command ?? [], `${system}\n\n${user}\n\nReply with only the JSON object, nothing else.`)
   if (!output.trim()) throw new Error(`${config.command?.[0] ?? 'The command'} printed nothing.`)
+  // Some programs print their limit message and still exit 0.
+  if (!output.includes('{') && LIMIT_TEXT.test(output)) throw new RateLimited(`${config.command?.[0] ?? 'The command'} says its usage limit is reached. ${output.replace(/\s+/g, ' ').slice(0, 200)}`, parseResetMs(new Headers(), output))
   return extractJson(output)
 }
 
@@ -163,6 +183,8 @@ export async function chatJson(config: Llm, system: string, user: string, fetchI
     try { response = await call(false) } catch (error) { throw new Error(`Language model unreachable: ${errorText(error)}`) }
   }
   if (!response.ok) {
+    const limit = await limitFrom(response.clone(), 'The AI service')
+    if (limit) throw limit
     const detail = (await response.text().catch(() => '')).slice(0, 300)
     const message = `Language model answered ${response.status}. ${detail}`.trim()
     const retryable = retryableStatus(response.status)
@@ -195,11 +217,26 @@ const merge = <T>(parts: T[][], key: (item: T) => string): T[] => {
   return parts.flat().filter(item => { const k = normalize(key(item)); if (seen.has(k)) return false; seen.add(k); return true })
 }
 
-export async function digestNote(config: Llm, meta: NoteMeta, transcript: Transcript, known: Known, fetchImpl: Fetch = fetch): Promise<Digest> {
+export type DigestPart = Omit<Digest, 'model' | 'createdAt'>
+
+/**
+ * Where the finished pieces of a long recording are kept while the rest is still being sorted. A recording is cut into
+ * pieces and each is sorted on its own. If a usage limit stops the work half way, the pieces already done are not
+ * paid for twice: the next try loads them and carries on from the next one. `key` names the recording and how it was cut,
+ * so pieces saved for different text are never reused.
+ */
+export interface DigestProgress {
+  load(key: string): Promise<DigestPart[]>
+  save(key: string, parts: DigestPart[]): Promise<void>
+}
+
+export async function digestNote(config: Llm, meta: NoteMeta, transcript: Transcript, known: Known, fetchImpl: Fetch = fetch, progress?: DigestProgress): Promise<Digest> {
   const when = localParts(meta.createdAt, meta.utcOffsetMinutes)
   const chunks = chunkText(transcript.text, config.maxInputChars)
-  const parts: Array<Omit<Digest, 'model' | 'createdAt'>> = []
+  const key = `${chunks.length}:${transcript.text.length}`
+  const parts: DigestPart[] = chunks.length > 1 && progress ? (await progress.load(key)).slice(0, chunks.length) : []
   for (const [index, chunk] of chunks.entries()) {
+    if (index < parts.length) continue // sorted on an earlier try
     const user = [
       `Recorded: ${when.date} ${when.time} (${when.weekday}), UTC${when.offset}, timezone ${meta.timezone}.`,
       chunks.length > 1 ? `This is part ${index + 1} of ${chunks.length} of one long recording.` : undefined,
@@ -209,6 +246,7 @@ export async function digestNote(config: Llm, meta: NoteMeta, transcript: Transc
       '', 'Transcript:', '"""', chunk, '"""',
     ].filter(line => line !== '' || true).join('\n')
     parts.push(cleanDigest(await chatJson(config, SYSTEM, user, fetchImpl), transcript.text))
+    if (chunks.length > 1) await progress?.save(key, parts)
   }
 
   let title = parts[0]?.title ?? ''

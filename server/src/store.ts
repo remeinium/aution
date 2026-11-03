@@ -38,6 +38,8 @@ export class Store {
   meta(id: string) { return this.json<NoteMeta>(id, 'meta.json') }
   transcript(id: string) { return this.json<Transcript>(id, 'transcript.json') }
   digest(id: string) { return this.json<Digest>(id, 'digest.json') }
+  /** Finished pieces of a long recording that is still being sorted (see DigestProgress). */
+  progress(id: string) { return this.json<{ key: string; parts: unknown[] }>(id, 'digest.progress.json') }
   async state(id: string): Promise<NoteState> {
     return (await this.json<NoteState>(id, 'state.json')) ?? { attempts: 0, nextAttemptAt: null, lastError: null, failed: false, stage: null }
   }
@@ -47,6 +49,7 @@ export class Store {
   private write(id: string, file: string, value: unknown): Promise<void> { return this.storage.put(this.userId, id, file, encodeJson(value)) }
   writeTranscript(id: string, transcript: Transcript) { return this.write(id, 'transcript.json', transcript) }
   writeDigest(id: string, digest: Digest) { return this.write(id, 'digest.json', digest) }
+  writeProgress(id: string, progress: { key: string; parts: unknown[] }) { return this.write(id, 'digest.progress.json', progress) }
   writeState(id: string, state: NoteState) { return this.write(id, 'state.json', state) }
   writeEdits(id: string, edits: NoteEdits) { return this.write(id, 'edits.json', edits) }
 

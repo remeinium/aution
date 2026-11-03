@@ -81,6 +81,8 @@ describe('from upload to a searchable, versioned note', () => {
     const brief = server.app.brain.brief('should I add a review screen to Trapper?')
     expect(brief.notes.map(hit => hit.ref)).toContain(NOTE_ID)
     expect(brief.entities.some(entity => entity.name === 'Trapper')).toBe(true)
+    // "Recent" is measured from today, so pin today near the sample note instead of depending on the real date.
+    ;(server.app.brain as { now: () => Date }).now = () => new Date('2026-10-31T12:00:00Z')
     const general = server.app.brain.brief('')
     expect(general.notes.length).toBeGreaterThan(0)
   })

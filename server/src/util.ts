@@ -6,6 +6,70 @@ export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 
 export class PermanentError extends Error {}
 
+/**
+ * An AI service said its usage limit is reached (a rate limit, a daily quota, or an empty balance). This is not a failure
+ * and never counts toward giving up: the work waits and carries on. `retryAfterMs` is how long the service said to wait,
+ * or null when it did not say.
+ */
+export class RateLimited extends Error {
+  readonly retryAfterMs: number | null
+  constructor(message: string, retryAfterMs: number | null) { super(message); this.retryAfterMs = retryAfterMs }
+}
+
+const UNIT_MS: Record<string, number> = {
+  ms: 1, millisecond: 1, milliseconds: 1,
+  s: 1000, sec: 1000, secs: 1000, second: 1000, seconds: 1000,
+  m: 60_000, min: 60_000, mins: 60_000, minute: 60_000, minutes: 60_000,
+  h: 3_600_000, hr: 3_600_000, hrs: 3_600_000, hour: 3_600_000, hours: 3_600_000,
+  d: 86_400_000, day: 86_400_000, days: 86_400_000,
+}
+
+/** "6m0s", "1h2m3.5s", "20ms", "34s", "2 hours 5 minutes" → milliseconds. Null when nothing in it is a duration. */
+export function parseDuration(text: string): number | null {
+  let total = 0
+  let found = false
+  for (const match of text.matchAll(/(\d+(?:\.\d+)?)\s*([a-z]+)/gi)) {
+    const unit = UNIT_MS[(match[2] as string).toLowerCase()]
+    if (unit === undefined) continue
+    total += Number(match[1]) * unit
+    found = true
+  }
+  return found ? Math.round(total) : null
+}
+
+/**
+ * How long an AI service says to wait, read from the places the common ones put it: the standard Retry-After header,
+ * OpenAI's x-ratelimit-reset-* durations, Anthropic's reset timestamps, Gemini's retryDelay and the sentence "try again in 2m".
+ * Null when the response does not say.
+ */
+export function parseResetMs(headers: Headers, bodyText: string, now: number = Date.now()): number | null {
+  const own = headers.get('x-voicebrain-retry-after-ms') ?? headers.get('retry-after-ms')
+  if (own && /^\d+(\.\d+)?$/.test(own.trim())) return Math.round(Number(own))
+  const after = headers.get('retry-after')?.trim()
+  if (after) {
+    if (/^\d+(\.\d+)?$/.test(after)) return Math.round(Number(after) * 1000)
+    const date = Date.parse(after)
+    if (!Number.isNaN(date)) return Math.max(0, date - now)
+  }
+  const openai = ['x-ratelimit-reset-requests', 'x-ratelimit-reset-tokens'].map(name => headers.get(name)).filter((v): v is string => Boolean(v)).map(parseDuration).filter((v): v is number => v !== null)
+  if (openai.length) return Math.max(...openai)
+  const anthropic = [...headers.entries()].filter(([name]) => /^anthropic-ratelimit-.*-reset$/.test(name)).map(([, value]) => Date.parse(value) - now).filter(ms => Number.isFinite(ms) && ms > 0)
+  if (anthropic.length) return Math.max(...anthropic)
+  const delay = /"retryDelay"\s*:\s*"([^"]+)"/.exec(bodyText)?.[1]
+  if (delay) { const ms = parseDuration(delay); if (ms !== null) return ms }
+  const sentence = /(?:retry|try again|resets?|available again)\s+in\s+((?:\d+(?:\.\d+)?\s*[a-z]+[\s,]*(?:and\s+)?)+)/i.exec(bodyText)?.[1]
+  return sentence ? parseDuration(sentence) : null
+}
+
+/** What a failing program or service wrote, when it is about a usage limit rather than a fault. */
+export const LIMIT_TEXT = /(rate.?limit|usage limit|limit (?:reached|exceeded|will reset)|hit your limit|too many requests|quota (?:exceeded|exhausted)|exceeded your current quota|out of credits?|credit balance is too low|insufficient[_ ]quota)/i
+
+/** How long to wait: what the service said (plus a second, so we do not arrive early), else a pause that grows, never over a week. */
+export function limitWaitMs(said: number | null, streak: number): number {
+  const fallback = Math.min(3_600_000, 60_000 * 2 ** Math.max(0, streak - 1))
+  return Math.min(7 * 86_400_000, Math.max(5_000, said === null ? fallback : said + 1000))
+}
+
 /** The note was deleted while it was being worked on. Callers drop their work quietly. */
 export class NoteGone extends Error {}
 
@@ -83,10 +147,19 @@ export async function withKeys(apiKeys: string, request: (key: string) => Promis
   const start = rotation.get(apiKeys) ?? 0
   rotation.set(apiKeys, start + 1)
   let last: Response | null = null
+  const waits: number[] = []
   for (let attempt = 0; attempt < keys.length; attempt += 1) {
     const response = await request(keys[(start + attempt) % keys.length] as string)
     if (response.status !== 429) return response
+    const said = parseResetMs(response.headers, await response.clone().text().catch(() => ''))
+    if (said !== null) waits.push(said)
     last = response
+  }
+  // Every key is limited. Report the soonest any of them frees up, because that is when work can carry on.
+  if (last && waits.length) {
+    const headers = new Headers(last.headers)
+    headers.set('x-voicebrain-retry-after-ms', String(Math.min(...waits)))
+    return new Response(await last.text(), { status: 429, headers })
   }
   return last as Response
 }
