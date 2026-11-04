@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "voicebrain",
-  "short_name": "voicebrain",
+  "name": "jssayso",
+  "short_name": "jssayso",
   "description": "Record a voice note. It uploads by itself.",
   "start_url": "./",
   "scope": "./",

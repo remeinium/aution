@@ -3,6 +3,7 @@ import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
+import { BRAND } from './src/brand.ts'
 
 /**
  * Fills the `@precache` and `@version` markers in dist/sw.js with the built file list so the
@@ -31,9 +32,24 @@ function serviceWorkerManifest(): Plugin {
   }
 }
 
+/** Puts the product name from src/brand.ts into index.html and the built web manifest, so a rename is one edit. */
+function brand(): Plugin {
+  let outDir = 'dist'
+  return {
+    name: 'brand',
+    configResolved(config) { outDir = config.build.outDir },
+    transformIndexHtml: { order: 'pre', handler: html => html.replaceAll('%BRAND_NAME%', BRAND.name).replaceAll('%BRAND_TAGLINE%', BRAND.tagline) },
+    closeBundle() {
+      const path = join(outDir, 'manifest.webmanifest')
+      const manifest = JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>
+      writeFileSync(path, `${JSON.stringify({ ...manifest, name: BRAND.name, short_name: BRAND.name }, null, 2)}\n`)
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   base: './',
-  plugins: [react(), serviceWorkerManifest()],
+  plugins: [react(), brand(), serviceWorkerManifest()],
   build: { target: 'es2023' },
 })
