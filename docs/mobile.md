@@ -55,7 +55,7 @@ Differences inside the app that need no UI change:
 | A WebView needs native help to grant the microphone | wry 0.57.1 `RustWebChromeClient.onPermissionRequest` | Already handled by wry: it asks for `RECORD_AUDIO` + `MODIFY_AUDIO_SETTINGS` at runtime, if both are in the manifest |
 | Service workers do not work in the app | wry serves the app via `shouldInterceptRequest`, no `ServiceWorkerController` | True in practice; the app does not register one |
 | Android pauses a backgrounded WebView | Tauri 2.12 config schema, `backgroundThrottling`: "Linux / Windows / Android: Unsupported" | True: the WebView cannot opt out |
-| WebView microphone stops when the screen turns off | *untested*: to be measured on the phone in phase 0 | |
+| WebView microphone stops when the screen turns off | Phone test: screen off for 20 s while recording, read `AudioRecordImpl` stats in logcat | True, and worse than stopping: the recording carries on but Android hands it silence (`[mute]`), so the note looks fine and is empty for that stretch |
 | Android 14 needs a `microphone` foreground service | *to be checked in phase 2* | |
 
 ## Libraries added, and their licences
@@ -80,6 +80,17 @@ The other session owns `server/`. Please pass these on:
    list and echo the matching `Origin` (with `Vary: Origin`), and document that `https://tauri.localhost` must be
    in it.
 
+2. **Rename what people see on the server's pages to jssayso.** The approval page (`server/src/pairing.ts`, for
+   example "…your own voicebrain app…"), the sign-out page (`server/src/auth.ts`, "You are signed out of
+   voicebrain…") and the other server-rendered pages still say voicebrain. The owner wants the brand jssayso
+   everywhere a person reads it. Ideally the server reads the name from one setting (an env var such as
+   `BRAND_NAME=jssayso`) so it matches the app's `src/brand.ts`.
+3. **Let someone switch Google accounts from the approval page.** The page reuses the server's own browser session
+   (`vb_session`, 14 days), so a person signed in as account A never reaches Google's account chooser (which
+   `prompt: 'select_account'` would show). Seen on the owner's phone on 2026-11-05: it kept approving as the old
+   account, and signing out of the website did not help (that only drops the website's device token). Needed: show
+   "Signed in as A · Use a different account" on `GET /pair`, which ends the session and restarts sign-in.
+
 ## Build it locally
 
 *To be written in phase 5.* The toolchain used here: JDK 21 (Corretto) in `~/.local/jdk`, Android SDK in
@@ -88,14 +99,14 @@ The other session owns `server/`. Please pass these on:
 
 ## Checklist on a real phone
 
-Filled in on a real phone; nothing here has been run yet.
+Filled in on a real phone.
 
 | Check | Result | Date, phone, Android version |
 |---|---|---|
-| App starts, shows the UI | untested | |
-| Microphone permission prompt, then recording works (screen on) | untested | |
-| Upload works (screen on) | untested | |
-| 5 minute recording with the screen off | untested | |
+| App starts, shows the UI | works: cold start 1.04 s, no console or CSP errors | 2026-11-05, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
+| Microphone permission prompt, then recording works (screen on) | works: system prompt "Allow jssayso to record audio?", 57 s note saved (188 KB); level meter responds (peak 0.06 quiet, 0.26 speaking) | 2026-11-05, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
+| Pairing with one tap, then upload (screen on) | works: approval page opened in the system browser, Google sign-in, note shows "Uploaded" | 2026-11-05, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
+| 5 minute recording with the screen off | **fails with the web recorder** (as expected): with the screen off Android feeds the WebView silence (AudioRecord stats switch from `fine` to `mute`, 12 s muted in a 20 s test). Fixed by the native recorder in phase 2 | 2026-11-05, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
 | Switching to other apps while recording | untested | |
 | Incoming phone call while recording | untested | |
 | Airplane mode, then back online: queued notes upload | untested | |
@@ -108,24 +119,35 @@ Filled in on a real phone; nothing here has been run yet.
 
 ### Phase 0: toolchain, app runs, record and upload with the screen on
 
-Done (no phone yet):
-- Toolchain installed: JDK 21, Android SDK (platform 37, build-tools 37), NDK 30.0.16248370, Rust Android targets.
-- `tauri android init`, then the generated project was locked down: no backup, no cleartext in release, only the
-  permissions the WebView microphone needs, no Android TV entry, no FileProvider, the app's own icon.
-- A debug APK builds: `npx tauri android build --debug --apk --target aarch64`. 136 MB, nearly all of it the
-  unoptimised Rust library with debug symbols; a release build will be far smaller (measured in phase 5).
-- Checked in the APK with `aapt2`: id `com.remeinium.jss.debug`, label jssayso, the three permissions above,
-  `allowBackup=false`.
+**Done, checked on a real phone** (Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0, 2026-11-05):
+- The app starts (cold start 1.04 s) and shows the same UI as the website, branded jssayso. No console or CSP errors.
+- Microphone: Android's own prompt appears on the first Record (wry asks for it); recording works with the screen on;
+  a 57 s note was saved on the device and its level meter responds to speech.
+- One-tap pairing with `https://vb.kusaldarshana.com`: the approval page opened in the **system browser**
+  (`src/native/links.ts`), Google sign-in there, the app connected by itself and the note uploaded ("Uploaded").
+  So the server already accepts the app's origin `https://tauri.localhost` (it sends `*`).
+- Settings has no PWA "Install" section in the app.
+- Debug APK: `npx tauri android build --debug --apk --target aarch64`, 136 MB (unoptimised Rust with debug symbols).
 
-Not done yet, needs a phone: the app starting, the microphone prompt, recording and uploading with the screen on.
-**Untested.**
+**Does not work yet** (expected, needs phase 2): with the screen off the WebView recording keeps running but
+records silence. Measured: AudioRecord switches from `fine` to `mute` as soon as the screen goes off.
+
+Things found on the way:
+- Xiaomi/HyperOS blocks `adb install` (`INSTALL_FAILED_USER_RESTRICTED`) even with "Install via USB" on and no
+  prompt shown. Workaround: `adb push` the APK to Downloads and install it from the Files app.
+- In debug mode the phone shows up as USB id `18d1:4ee7` (Google), not Xiaomi's `2717`; the udev rule needs `18d1`.
+- The server's approval page reuses the browser's server session, so switching Google accounts means signing out
+  at `https://vb.kusaldarshana.com/account` first (see "Needs from the server").
+- The Recording setting "The Record shortcut on your home screen always does this" refers to the PWA shortcut; the
+  native app has no shortcut yet.
 
 ### Phase 1: platform adapter
 
 Done: `src/native/` with the four interfaces, a web implementation (today's code) and a runtime choice; external
 links to the system browser; the token split for the secure store. The web app is unchanged:
 `npm run test:e2e` passes 22/22, 77 unit tests pass. Inside the app every part still uses the web code (the native
-ones come in phases 2 to 4). **Untested on a phone.**
+ones come in phases 2 to 4). On the phone (2026-11-05) the app ran through this layer: the web recorder and uploader
+under `choose()`, and external links through the opener plugin, all as above.
 
 ### Phase 6: iOS
 
