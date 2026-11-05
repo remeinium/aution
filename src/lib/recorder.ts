@@ -5,6 +5,8 @@ import { pickMime } from './mime'
 import { newNote } from './notes'
 import { kickUploads } from './uploader'
 import { ScreenLock } from './wakelock'
+import { choose } from '../native/runtime'
+import type { Recorder } from '../native/types'
 import type { Note, Settings } from './types'
 
 export type RecorderState = 'idle' | 'starting' | 'recording' | 'paused' | 'stopping'
@@ -21,8 +23,8 @@ export interface RecorderSnapshot {
 
 export const LEVEL_BARS = 64
 
-/** Records one note at a time. Audio is written to IndexedDB every second, so an interrupted note can be recovered. */
-export class VoiceRecorder {
+/** Records one note at a time in the browser. Audio is written to IndexedDB every second, so an interrupted note can be recovered. */
+export class VoiceRecorder implements Recorder {
   private snapshot: RecorderSnapshot = { state: 'idle', noteId: null, marks: 0, warning: null, error: null }
   private readonly listeners = new Set<() => void>()
   private readonly screenLock = new ScreenLock()
@@ -236,4 +238,5 @@ export class VoiceRecorder {
   }
 }
 
-export const recorder = new VoiceRecorder()
+/** The recorder the UI uses: the browser's, or the native one inside the app (see src/native). */
+export const recorder: Recorder = choose({ web: () => new VoiceRecorder() })

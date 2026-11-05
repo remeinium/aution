@@ -4,7 +4,10 @@ import '@fontsource-variable/red-hat-display/wght.css'
 import './styles/tokens.css'
 import './styles/voice.css'
 import App from './App'
+import { startPlatform } from './native'
 import { isNativeApp } from './native/platform'
+
+startPlatform()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>)
 
