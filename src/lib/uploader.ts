@@ -6,6 +6,8 @@ import { extensionFor } from './mime'
 import { ServerError, authHeaders, editOnServer } from './server'
 import { classifyStatus, retryDelayMs, statusMessage, uploadTimeoutMs } from './rules'
 import { loadSettings } from './settings'
+import { choose } from '../native/runtime'
+import type { Uploader } from '../native/types'
 import { APP_VERSION, type Note, type Settings } from './types'
 
 const LOCK = 'tv-upload'
@@ -164,11 +166,11 @@ export async function registerBackgroundSync(): Promise<void> {
 let timer: ReturnType<typeof setTimeout> | undefined
 let kicking = false
 
-/** Starts an upload pass now (debounced) and schedules the next retry. Safe to call often. */
-export function kickUploads(options: FlushOptions = {}): void {
+/** The browser's uploader: starts an upload pass now (debounced) and schedules the next retry. Safe to call often. */
+function webKickUploads(options: FlushOptions = {}): void {
   clearTimeout(timer)
   timer = setTimeout(async () => {
-    if (kicking) return kickUploads(options)
+    if (kicking) return webKickUploads(options)
     kicking = true
     try {
       await flushUploads(options)
@@ -180,6 +182,13 @@ export function kickUploads(options: FlushOptions = {}): void {
     const retryAt = await nextRetryAt()
     const editsWaiting = (await listNotes()).some(note => note.editPending && note.status === 'uploaded')
     const at = retryAt ?? (editsWaiting ? Date.now() + 30_000 : null)
-    if (at !== null) timer = setTimeout(() => kickUploads(), Math.max(1000, at - Date.now()))
+    if (at !== null) timer = setTimeout(() => webKickUploads(), Math.max(1000, at - Date.now()))
   }, 250)
+}
+
+const uploader: Uploader = choose({ web: () => ({ kick: webKickUploads }) })
+
+/** Starts an upload pass now and keeps retrying with backoff: in the page, or natively inside the app. Safe to call often. */
+export function kickUploads(options: FlushOptions = {}): void {
+  uploader.kick(options)
 }

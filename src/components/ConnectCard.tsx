@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, CircleAlert, ExternalLink, LoaderCircle } from 'lucide-react'
+import { BRAND } from '../brand'
 import { connectDevice, type ConnectState } from '../lib/connect'
 import { DEFAULT_SERVER } from '../lib/defaults'
 import { normalizeEndpoint } from '../lib/endpoint'
@@ -109,7 +110,7 @@ export function ConnectCard({ autoStart = false }: { autoStart?: boolean }) {
 
   return <div className="connect">
     <button type="button" className="primary-button big" onClick={tap} disabled={state.phase === 'starting'}>
-      {state.phase === 'starting' ? 'Contacting your server…' : 'Sign in to voicebrain'}
+      {state.phase === 'starting' ? 'Contacting your server…' : `Sign in to ${BRAND.name}`}
     </button>
     {state.phase === 'failed' && <p className="hint warn" role="alert"><CircleAlert size={12} aria-hidden="true" /> {state.message}</p>}
     <p className="hint">

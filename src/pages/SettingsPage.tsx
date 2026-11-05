@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { BRAND } from '../brand'
+import { isNativeApp } from '../native/platform'
 import { useNotes, useSettings, useToast } from '../lib/hooks'
 import { isConfigured, isPrivateAddress, normalizeEndpoint } from '../lib/endpoint'
 import { formatBytes } from '../lib/format'
@@ -183,15 +185,16 @@ export function SettingsPage({ installPrompt }: { installPrompt: InstallEvent | 
         <ChatGptCard />
       </section>
 
-      <section className="settings-section" aria-labelledby="install-title">
+      {/* The native app is already installed: the PWA install help does not apply there. */}
+      {!isNativeApp() && <section className="settings-section" aria-labelledby="install-title">
         <h2 id="install-title">Install</h2>
         {window.matchMedia('(display-mode: standalone)').matches
           ? <p className="hint">Installed. Press and hold the app icon for the Record shortcut.</p>
           : installPrompt
-            ? <><p className="hint">Add voicebrain to your home screen to open it like an app, offline, with a one-tap Record shortcut.</p>
+            ? <><p className="hint">Add {BRAND.name} to your home screen to open it like an app, offline, with a one-tap Record shortcut.</p>
               <div className="row-actions"><button type="button" className="primary-button" onClick={() => void installPrompt.prompt()}>Install app</button></div></>
             : <p className="hint">In your browser menu choose “Install app” or “Add to Home screen”. On iPhone use Share, then Add to Home Screen.</p>}
-      </section>
+      </section>}
 
       <section className="settings-section" aria-labelledby="help-title">
         <h2 id="help-title">Help</h2>

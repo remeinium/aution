@@ -159,7 +159,7 @@ async function uploadOne(db, note, settings) {
     } else {
       await updateNote(db, note.id, { status: 'failed', lastError: statusMessage(response.status), nextAttemptAt: null })
     }
-  } catch {
+  } catch (error) {
     const timedOut = error && (error.name === 'TimeoutError' || error.name === 'AbortError')
     await updateNote(db, note.id, { status: 'local', lastError: timedOut ? 'The upload took too long.' : 'No connection to the server.', nextAttemptAt: Date.now() + retryDelayMs(attempts) })
   }

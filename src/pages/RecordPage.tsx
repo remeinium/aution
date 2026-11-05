@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Bookmark, CloudOff, Mic, Pause, Play, Square } from 'lucide-react'
+import { BRAND } from '../brand'
 import { Waveform } from '../components/Waveform'
 import { StatusLabel } from '../components/StatusLabel'
 import { describeStatus } from '../lib/statusView'
@@ -23,7 +24,7 @@ function Clock() {
   }, [live, snapshot.noteId])
 
   useEffect(() => {
-    const original = 'voicebrain'
+    const original = BRAND.name
     document.title = snapshot.state === 'recording' ? `● ${formatClock(ms).slice(3)} · ${original}` : snapshot.state === 'paused' ? `Paused · ${original}` : original
     return () => { document.title = original }
   }, [snapshot.state, ms])
@@ -134,7 +135,7 @@ export function RecordPage() {
           </div>
 
           <p className={`timer-message${snapshot.error || snapshot.warning ? ' is-alert' : ''}`} role="status" aria-live="polite">{message}</p>
-          {!connected && snapshot.state === 'idle' && <p className="connect-prompt"><a className="primary-button" href="#/settings?connect=1">Sign in to voicebrain</a></p>}
+          {!connected && snapshot.state === 'idle' && <p className="connect-prompt"><a className="primary-button" href="#/settings?connect=1">Sign in to {BRAND.name}</a></p>}
           <p className="timer-help">Space starts and stops · M marks a moment. The screen stays on while recording.</p>
         </div>
       </section>
