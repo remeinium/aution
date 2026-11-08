@@ -93,3 +93,7 @@ Colours, type, spacing and states come from Trapper's `src/styles/tokens.css` (c
 ## User guide
 
 The guide is a page in the app (`#/guide`, also linked from Settings → Help) and its ChatGPT steps are also in Settings → ChatGPT. The pictures live in `public/guide/`. The ones of this app are retaken with `npm run build && node scripts/guide-shots.mjs` (real Chromium against the built app, with a few made-up notes; it listens on port 80, so run it as root, for example in the Playwright image). The two pictures of ChatGPT's own screens (`chatgpt-1-add.png`: the Plugins page with the numbered steps, `chatgpt-2-form.png`: the Add custom MCP server form) were taken by hand, so retake them by hand if ChatGPT changes; a picture that is missing is simply left out of the guide.
+
+## License
+
+[GNU AGPL-3.0-or-later](LICENSE). You may run, study, change and share aution. If you run a modified version as a network service, you must offer your users its source code.
