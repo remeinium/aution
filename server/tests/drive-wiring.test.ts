@@ -30,7 +30,7 @@ beforeEach(async () => {
   dir = await tempDir()
   await boot()
 })
-afterEach(async () => { vi.restoreAllMocks(); await server.stop(); drive.purge('alice', 'voicebrain'); await dir.clean() }) // every test starts with an empty Drive
+afterEach(async () => { vi.restoreAllMocks(); await server.stop(); drive.purge('alice', 'aution'); await dir.clean() }) // every test starts with an empty Drive
 
 async function connect(browser: Browser) {
   expect((await connectDrive(browser, origin, google, ALICE)).status).toBe(200)

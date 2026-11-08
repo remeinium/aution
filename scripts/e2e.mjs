@@ -105,7 +105,7 @@ console.log(`App ${APP}  receiver ${ENDPOINT}`)
 await step('opens on the Record screen with no console errors', async () => {
   await page.goto(`${APP}/`)
   await page.getByRole('heading', { name: 'Record', level: 1 }).waitFor()
-  assert.equal(await page.title(), 'jssayso')
+  assert.equal(await page.title(), 'aution')
   await page.screenshot({ path: join(shots, '01-record-idle-phone.png') })
 })
 
@@ -329,13 +329,13 @@ await step('one tap connects a new device: the app gets a code, opens the approv
   watch(tablet)
   await tablet.goto(`${APP}/#/settings`)
   await tablet.getByRole('heading', { name: 'Settings', level: 1 }).waitFor()
-  assert.equal(await tablet.getByRole('button', { name: 'Sign in to jssayso' }).isVisible(), true)
+  assert.equal(await tablet.getByRole('button', { name: 'Sign in to aution' }).isVisible(), true)
   await tablet.screenshot({ path: join(shots, '10-connect-idle.png'), fullPage: true })
   await tablet.getByRole('button', { name: 'Use a different server' }).click() // the test server, not the real default
   await tablet.getByLabel('Server address').first().fill(ENDPOINT)
   await tablet.getByRole('button', { name: 'Done' }).click()
   const before = (await serverDevices()).length
-  const [popup] = await Promise.all([tablet.waitForEvent('popup'), tablet.getByRole('button', { name: 'Sign in to jssayso' }).click()])
+  const [popup] = await Promise.all([tablet.waitForEvent('popup'), tablet.getByRole('button', { name: 'Sign in to aution' }).click()])
   const code = await tablet.locator('.connect-code').innerText() // the app generated this
   assert.match(code, /^[A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}$/)
   await tablet.screenshot({ path: join(shots, '11-connect-waiting.png'), fullPage: true })
@@ -397,7 +397,7 @@ await step('disconnecting cuts this device off on the server', async () => {
   // The top bar offers Sign out while connected and Sign in otherwise; signing out from it disconnects the same way.
   assert.equal(await tablet.getByRole('link', { name: 'Sign in', exact: true }).count(), 0)
   await tablet.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Sign out', exact: true }).click()
-  await tablet.getByRole('button', { name: 'Sign in to jssayso' }).waitFor()
+  await tablet.getByRole('button', { name: 'Sign in to aution' }).waitFor()
   await tablet.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Sign in', exact: true }).waitFor()
   await until(async () => (await serverDevices()).length === before - 1, 'the server to forget the device')
   await tablet.context().close()
@@ -458,7 +458,7 @@ await step('the ChatGPT card hands over this server’s address, and the user gu
   assert.equal(await page.evaluate(() => navigator.clipboard.readText()), `${ENDPOINT}/mcp`)
   await page.getByRole('button', { name: 'Copy instruction' }).click()
   await page.getByText('Instruction copied.').waitFor()
-  assert.match(await page.evaluate(() => navigator.clipboard.readText()), /^I use a plugin called voicebrain\./)
+  assert.match(await page.evaluate(() => navigator.clipboard.readText()), /^I use a plugin called aution\./)
   await page.getByRole('link', { name: 'Open the user guide' }).click()
   await page.getByRole('heading', { name: 'User guide', level: 1 }).waitFor()
   for (const name of ['1. Sign in', '2. Record a note', '5. Connect ChatGPT', '7. Use it from Claude Code, Cursor, opencode or Codex', '9. Who can see your notes']) await page.getByRole('heading', { name }).waitFor()

@@ -1,5 +1,5 @@
 import type { Digest, NoteEdits, NoteMeta, NoteState, Transcript } from './types.ts'
-import { OWNER_ID, payloadBytes, type NoteStorage, type StoredStream } from './storage.ts'
+import { OWNER_ID, payloadBytes, type NoteStorage, type Payload, type StoredStream } from './storage.ts'
 
 const text = new TextDecoder()
 const encodeJson = (value: unknown) => new TextEncoder().encode(`${JSON.stringify(value, null, 2)}\n`)
@@ -71,9 +71,10 @@ export class Store {
   releaseAudio(id: string): Promise<void> { return this.storage.releaseAudio(this.userId, id) }
 
   /** Stores an upload. The note only exists once complete, so a crash never leaves half a note. Returns false for a repeat. */
-  saveUpload(meta: NoteMeta, audio: Uint8Array, extension: string): Promise<boolean> {
+  saveUpload(meta: NoteMeta, audio: Payload, extension: string, bytes: number = audio instanceof Uint8Array ? audio.byteLength : -1): Promise<boolean> {
+    if (bytes < 0) throw new Error('saveUpload needs the size of a streamed recording')
     const file = `audio.${extension}`
-    return this.storage.createNote(this.userId, meta.id, { meta: encodeJson({ ...meta, audioFile: file, audioBytes: audio.byteLength }), files: { [file]: audio } })
+    return this.storage.createNote(this.userId, meta.id, { meta: encodeJson({ ...meta, audioFile: file, audioBytes: bytes }), files: { [file]: audio } })
   }
 
   /** A note typed or dictated in chat. No audio, and the "transcript" is the text itself. */

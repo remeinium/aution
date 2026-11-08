@@ -16,7 +16,7 @@ import { Pairing } from '../server/src/pairing.ts'
 const root = fileURLToPath(new URL('..', import.meta.url))
 const out = join(root, 'public', 'guide')
 await mkdir(out, { recursive: true })
-const HOST = 'voicebrain.example.com'
+const HOST = 'aution.example.com'
 const ENDPOINT = `http://${HOST}`
 const TOKEN = 'guide-token-0123456789abcdef'
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json' }
@@ -101,7 +101,7 @@ await shot('settings.png', page.locator('.settings-section').first())
 
 // 5. The two approval pages the server shows. They are rendered from the server's own page code, for a made-up person.
 const view = await context.newPage()
-const pairing = new Pairing({ devices: new Devices(join(dataDir, 'guide-devices.sqlite')), publicUrl: 'https://voicebrain.example.com' })
+const pairing = new Pairing({ devices: new Devices(join(dataDir, 'guide-devices.sqlite')), publicUrl: 'https://aution.example.com' })
 const { userCode } = pairing.start('Phone', 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36', '203.0.113.7')
 await view.setContent(pairing.page(userCode, '', '', 'you@example.com'))
 await shot('approve-device.png', view.locator('main'))

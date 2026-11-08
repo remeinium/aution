@@ -13,7 +13,7 @@ import { NoteGone, UUID } from './util.ts'
  * only ever sees files it created).
  *
  * Layout in each user's Drive:
- *   voicebrain/                  a folder the app created; found again by appProperties vbRole=root, never by name
+ *   aution/                  a folder the app created; found again by appProperties vbRole=root, never by name
  *     <noteId>/                  one folder per note (vbRole=note, vbNote=<noteId>)
  *       meta.json audio.* transcript.json digest.json edits.json     (every file carries vbNote=<noteId>)
  *
@@ -181,7 +181,7 @@ export class DriveStorage implements NoteStorage {
     this.cacheDir = options.cacheDir
     this.apiBase = (options.apiBase ?? 'https://www.googleapis.com/drive/v3').replace(/\/+$/, '')
     this.uploadBase = (options.uploadBase ?? 'https://www.googleapis.com/upload/drive/v3').replace(/\/+$/, '')
-    this.rootName = options.rootName ?? 'voicebrain'
+    this.rootName = options.rootName ?? 'aution'
     this.http = options.fetch ?? fetch
     this.sleep = options.sleep ?? (ms => new Promise(done => setTimeout(done, ms)))
     this.random = options.random ?? Math.random

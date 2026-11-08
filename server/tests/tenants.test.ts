@@ -137,6 +137,28 @@ describe('each person has their own notes, index and vault', () => {
     expect(existsSync(join(dir.dir, 'users', '1002', 'vault', 'wiki', 'projects', 'secret.md'))).toBe(false)
   })
 
+  it('lists a person\'s own devices only, while the server\'s admin token still sees all of them', async () => {
+    const list = async (token: string) => ((await (await fetch(`${origin}/v1/devices`, { headers: auth(token) })).json()) as { devices: Array<{ current: boolean }> }).devices
+    expect(await list(bob.device)).toHaveLength(1)
+    expect((await list(bob.device))[0]?.current).toBe(true)
+    expect(await list(alice.device)).toHaveLength(1)
+    expect(await list(INGEST)).toHaveLength(2)
+  })
+
+  it('lets a signed-in person switch Google account from the approval page, but not from another site', async () => {
+    const start = (await (await fetch(`${origin}/v1/pair/start`, { method: 'POST', headers: json, body: JSON.stringify({ deviceName: 'Tablet' }) })).json()) as { userCode: string }
+    const page = await (await alice.browser.fetch(`${origin}/pair?code=${start.userCode}`)).text()
+    expect(page).toContain('alice@example.com')
+    expect(page).toContain('Use a different account')
+    expect((await alice.browser.form(`${origin}/pair/switch`, { code: start.userCode }, { Origin: 'https://evil.example' })).status).toBe(403)
+    expect((await alice.browser.fetch(`${origin}/pair?code=${start.userCode}`)).status).toBe(200) // still signed in
+    const switched = await alice.browser.form(`${origin}/pair/switch`, { code: start.userCode }, { Origin: origin })
+    expect(switched.status).toBe(303)
+    expect(switched.headers.get('location')).toContain('/auth/google/start')
+    expect(switched.headers.get('location')).toContain(encodeURIComponent(`/pair?code=${start.userCode}`))
+    expect((await alice.browser.fetch(`${origin}/pair?code=${start.userCode}`)).status).toBe(302) // signed out: sent to sign in
+  })
+
   it('does not let another person edit, delete or retry a note over the app\'s API', async () => {
     const as = auth(bob.device)
     expect((await fetch(`${origin}/v1/notes/${NOTE_ID}`, { method: 'PATCH', headers: { ...as, ...json }, body: JSON.stringify({ title: 'Hijacked', tags: ['x'] }) })).status).toBe(404)

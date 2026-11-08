@@ -1,4 +1,4 @@
-/* voicebrain service worker.
+/* aution service worker.
  * 1. Opens the app offline (precached build output, filled in by vite.config.ts).
  * 2. Uploads waiting notes when the browser says the network is back, even with the app closed.
  * The upload rules below mirror src/lib/rules.ts; tests/sw-parity.test.ts fails if they drift apart. */
@@ -137,7 +137,7 @@ async function uploadOne(db, note, settings) {
     device: settings.deviceName,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     utcOffsetMinutes: -new Date(note.createdAt).getTimezoneOffset(),
-    app: `voicebrain-app/${APP_VERSION}`,
+    app: `aution-app/${APP_VERSION}`,
   }
   const form = new FormData()
   form.append('meta', JSON.stringify(meta))

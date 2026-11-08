@@ -1,6 +1,6 @@
-# voicebrain design notes
+# aution design notes
 
-The voicebrain app is part of the Trapper ecosystem and follows **Trapper's `design.md` without changes**. `src/styles/tokens.css` is a verbatim copy of Trapper's token file; if a shared value changes, change it in Trapper and copy it here. Do not add a second palette.
+The aution app is part of the Trapper ecosystem and follows **Trapper's `design.md` without changes**. `src/styles/tokens.css` is a verbatim copy of Trapper's token file; if a shared value changes, change it in Trapper and copy it here. Do not add a second palette.
 
 Voice-specific decisions, all built from existing tokens:
 

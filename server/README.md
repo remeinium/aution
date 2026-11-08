@@ -1,4 +1,4 @@
-# voicebrain server
+# aution server
 
 Receives voice notes from the recorder app, turns them into a searchable, versioned knowledge base, and lets an assistant (ChatGPT, over MCP) read and extend it.
 
@@ -31,13 +31,13 @@ ChatGPT ◀──MCP over HTTPS──── brief · search · recent · get_not
 Needs Docker with the compose plugin. If the machine already runs other services, read `deploy/AGENT_HANDOFF.md`: it deploys in stages and checks at each one that nothing else was disturbed.
 
 ```bash
-git clone https://github.com/thekusaldarshana/voicebrain && cd voicebrain
+git clone https://github.com/remeinium/aution && cd aution
 cp .env.example .env && nano .env          # see the comments in the file
 mkdir data && chown 1000:1000 data         # the user the container runs as (PUID / PGID in .env to change)
 docker compose up -d --build
-curl http://127.0.0.1:18787/health         # {"ok":true}   (host port 18787; set VOICEBRAIN_PORT to change it)
+curl http://127.0.0.1:18787/health         # {"ok":true}   (host port 18787; set AUTION_PORT to change it)
 docker compose logs -f stt                 # the first start downloads the Whisper model (about 1.6 GB)
-docker compose logs -f voicebrain          # shows what is configured and what is missing
+docker compose logs -f aution          # shows what is configured and what is missing
 ```
 
 The stack is isolated on purpose: its own compose project, network and volumes, one host port bound to `127.0.0.1`, and hard CPU and memory limits on the Whisper container (important on a machine without swap, where one runaway process makes the kernel kill something else). `docker compose down` removes it without touching anything else; add `-v` only if you also want the downloaded models gone (`./data` is never removed by compose).
@@ -49,7 +49,7 @@ The stack is isolated on purpose: its own compose project, network and volumes, 
 
 Check `https://brain.example.com/health`.
 
-Connect the phone (or a computer): open the app, tap **Connect to voicebrain**. The app asks the server for a code, opens the server's approval page by itself, and waits. Sign in with Google there (once per browser) and tap Approve; the app connects on its own and keeps its own revocable token. Nothing is copied, pasted or sent in a link. It needs Google sign-in (see *Sign-in*) and `PUBLIC_URL` to be set. To add a second device from one that is already connected, the connected app can ask for a short code (8 characters, good for 2 minutes, once) and the new device types it in: `POST /v1/pair/offer` makes the code, `POST /v1/pair/claim` redeems it. For a server without them, or for scripts, the older way still works: `docker compose exec voicebrain node src/main.ts pair --app https://<your-app> --endpoint https://brain.example.com` prints a link that carries the upload token.
+Connect the phone (or a computer): open the app, tap **Connect to aution**. The app asks the server for a code, opens the server's approval page by itself, and waits. Sign in with Google there (once per browser) and tap Approve; the app connects on its own and keeps its own revocable token. Nothing is copied, pasted or sent in a link. It needs Google sign-in (see *Sign-in*) and `PUBLIC_URL` to be set. To add a second device from one that is already connected, the connected app can ask for a short code (8 characters, good for 2 minutes, once) and the new device types it in: `POST /v1/pair/offer` makes the code, `POST /v1/pair/claim` redeems it. For a server without them, or for scripts, the older way still works: `docker compose exec aution node src/main.ts pair --app https://<your-app> --endpoint https://brain.example.com` prints a link that carries the upload token.
 
 Transcription runs on the VPS itself (the `stt` container, faster-whisper), so audio never leaves it and there is no per-minute cost. Sorting notes into tasks and ideas needs a language model, and you choose where it comes from (see *Who sorts the notes*): your assistant over MCP, an API key of your own, or an agent program. By default there is no key on the server.
 
@@ -74,7 +74,7 @@ The `/mcp` address speaks standard MCP over HTTP, so any agent can use it. Two w
 - **A personal key** (works everywhere, no browser): open your account page (`/account`), create a key under *Coding agents*, and copy the ready-made settings for your tool. A key belongs to you, shows once, is stored hashed, can be revoked on its own, and stops working if you are taken off the allowlist.
 - **OAuth**: clients that support it (Claude Code, opencode, ChatGPT) can just be given the address and will open the same Google sign-in.
 
-Example for Claude Code: `claude mcp add --transport http voicebrain https://YOUR-SERVER/mcp --header "Authorization: Bearer vbk_..."`. For opencode set `"oauth": false` when you use a key, or it tries OAuth first. If Claude Code ignores the header and starts an OAuth flow instead, use the OAuth route (`/mcp` inside Claude Code). The Cursor and Codex settings in the account page are written from memory of their documentation, so check them against each tool's current docs.
+Example for Claude Code: `claude mcp add --transport http aution https://YOUR-SERVER/mcp --header "Authorization: Bearer vbk_..."`. For opencode set `"oauth": false` when you use a key, or it tries OAuth first. If Claude Code ignores the header and starts an OAuth flow instead, use the OAuth route (`/mcp` inside Claude Code). The Cursor and Codex settings in the account page are written from memory of their documentation, so check them against each tool's current docs.
 
 ## Sign-in with Google
 
@@ -109,7 +109,7 @@ Other clients (Claude Desktop, Cursor) can use the same `/mcp` URL with `MCP_TOK
 
 **After updating the server, refresh the app in ChatGPT's settings** so it picks up changed tools and descriptions.
 
-**About permission prompts.** According to OpenAI's documentation, ChatGPT asks you to confirm *write* actions by default, honors a tool's `readOnlyHint`, and treats any tool without that hint as a write. A remembered choice lasts for one conversation only. Every voicebrain tool now declares all of its hints, truthfully: the seven that only read are marked read-only and should never prompt; `add_note`, `update_task`, `rename_note` and `write_wiki` change data, so ChatGPT will ask before using them. That confirmation belongs to ChatGPT and cannot be turned off from the server. It is also what protects your notes from a note that contains hostile instructions, so the tools are deliberately **not** mislabeled as read-only to avoid it. If a read tool still prompts, that is worth reporting along with the exact wording.
+**About permission prompts.** According to OpenAI's documentation, ChatGPT asks you to confirm *write* actions by default, honors a tool's `readOnlyHint`, and treats any tool without that hint as a write. A remembered choice lasts for one conversation only. Every aution tool now declares all of its hints, truthfully: the seven that only read are marked read-only and should never prompt; `add_note`, `update_task`, `rename_note` and `write_wiki` change data, so ChatGPT will ask before using them. That confirmation belongs to ChatGPT and cannot be turned off from the server. It is also what protects your notes from a note that contains hostile instructions, so the tools are deliberately **not** mislabeled as read-only to avoid it. If a read tool still prompts, that is worth reporting along with the exact wording.
 
 ## The tools
 
@@ -158,7 +158,7 @@ Each device gets its own token (`vbd_…`, stored on the server only as a hash) 
 
 If a person needs their notes to be reachable by nobody else, in order of strength:
 
-1. **Their own host.** Run that person's voicebrain on a machine only they administer: their own small VPS, a home server, or an account the team has no access to. This is the only option that truly answers the question, and one-tap connecting makes pointing the app at it easy.
+1. **Their own host.** Run that person's aution on a machine only they administer: their own small VPS, a home server, or an account the team has no access to. This is the only option that truly answers the question, and one-tap connecting makes pointing the app at it easy.
 2. **Originals in their own Google Drive** (not built). The app would send the original audio to their Drive (the `drive.file` scope, which only sees files the app creates) as well as for transcription, and the server would drop the audio after transcribing. Administrators could still read the transcripts.
 3. **Encryption at rest with a key only they hold** (not built). It protects disks, backups and casual browsing, but not an administrator who is willing to read the running server's memory.
 
@@ -166,7 +166,7 @@ The sensible combination is 1 plus an encrypted copy of the originals in their D
 
 ## Local Whisper
 
-`whisper/` is a small server (about 70 lines) around [faster-whisper](https://github.com/SYSTRAN/faster-whisper) with the OpenAI transcription API shape, so the voicebrain server treats it like any other transcription service. It decodes WebM/Opus, MP4/AAC, Ogg and WAV, skips silence instead of inventing words over it, returns timed segments (so marked moments show the words spoken there), and handles one recording at a time.
+`whisper/` is a small server (about 70 lines) around [faster-whisper](https://github.com/SYSTRAN/faster-whisper) with the OpenAI transcription API shape, so the aution server treats it like any other transcription service. It decodes WebM/Opus, MP4/AAC, Ogg and WAV, skips silence instead of inventing words over it, returns timed segments (so marked moments show the words spoken there), and handles one recording at a time.
 
 Measured here on 4 shared vCPUs with int8 (your 8 vCPUs should be faster). The test audio is one spoken note (55 words) degraded four ways: a noisy room, a phone call (8 kHz, 10 kbps), a far-away microphone with echo, and a phone call in traffic. Word errors against the script:
 
@@ -179,7 +179,7 @@ Measured here on 4 shared vCPUs with int8 (your 8 vCPUs should be faster). The t
 
 Read it carefully: this is one synthetic voice and 55 words, so a single word is about 2%. The differences between 0% and 2% are noise. What is real is the last column: on bad audio the larger models are clearly better, and `large-v3-turbo` gets nearly all of `large-v3`'s accuracy at about three times the speed. That is why it is the default. `large-v3` is the choice if you only care about accuracy and can wait: a 10-minute note takes about 10 minutes on 4 shared vCPUs. Your own voice, microphone and rooms are the real test.
 
-**Names are the weak spot.** Whisper guesses at names it has not seen. `STT_PROMPT=Nimal, Trapper, voicebrain` fixed "Nemo" to "Nimal" in testing. Add the names and terms you use.
+**Names are the weak spot.** Whisper guesses at names it has not seen. `STT_PROMPT=Nimal, Trapper, aution` fixed "Nemo" to "Nimal" in testing. Add the names and terms you use.
 
 Check it is alive: `docker compose exec stt python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/health').read())"`.
 
@@ -231,7 +231,7 @@ Everything the server must not lose goes through one interface, `NoteStorage` (`
 **Rebuild everything derived**, from the stored notes alone:
 
 ```bash
-docker compose exec voicebrain node src/main.ts reindex     # or: REINDEX=1 in .env, once
+docker compose exec aution node src/main.ts reindex     # or: REINDEX=1 in .env, once
 ```
 
 This rewrites the search index and every generated vault page, and removes generated pages that no stored note explains. It never touches `wiki/`, `state/` or the stored notes. It is safe to run any time; stopping the server first avoids a moment where search is partly rebuilt.
@@ -241,7 +241,7 @@ This rewrites the search index and every generated vault page, and removes gener
 Each user's notes live in **their own Drive**, through the Drive v3 REST API with the narrow `drive.file` scope: the app only ever sees files it created. In the user's Drive:
 
 ```
-voicebrain/                  created by the app; found again by a hidden marker (appProperties), never by name
+aution/                  created by the app; found again by a hidden marker (appProperties), never by name
   <note id>/                 one folder per note
     meta.json  audio.<ext>  transcript.json  digest.json  edits.json
 ```
@@ -270,7 +270,7 @@ Drive calls per operation (what the tests count):
 
 **Rebuilding from Drive** (`node src/main.ts reindex`) makes one list per 1,000 notes, then per note one list and one download each of `meta.json`, `transcript.json`, `digest.json` and, if present, `edits.json`: about **4 to 5 calls per note**, no audio and no writes to Drive. Four notes are read at a time. The test suite confirms the count (14 calls to rebuild 3 notes) but no real Google call has been made anywhere, so the time is an estimate: at 150 to 300 ms per call that is roughly 0.2 to 0.5 s per note, so **about 4 to 8 minutes for 1,000 notes**. Drive's request limits are in the thousands per minute per user (check your project's quota page); a 1,000-note rebuild is about 5,000 calls and is slowed down, not broken, if Google answers 429. A server with an empty disk can be pointed at the same Drive and rebuilt this way; task statuses and `wiki/` are not in Drive (see the table above), so they are not restored.
 
-Caveats: Drive's search index lags behind writes by seconds, so this process trusts what it wrote or deleted itself for ten minutes before believing a listing. It assumes **one server instance per user's folder**: locks are per process, so two instances racing to create the same note could make a duplicate (reads tolerate duplicates, but you would have to tidy them in Drive). Audio counts against the user's own Drive storage, and a user who removes the app's access, or deletes the `voicebrain` folder, will see the server report `DriveNotConnected` or start a fresh folder.
+Caveats: Drive's search index lags behind writes by seconds, so this process trusts what it wrote or deleted itself for ten minutes before believing a listing. It assumes **one server instance per user's folder**: locks are per process, so two instances racing to create the same note could make a duplicate (reads tolerate duplicates, but you would have to tidy them in Drive). Audio counts against the user's own Drive storage, and a user who removes the app's access, or deletes the `aution` folder, will see the server report `DriveNotConnected` or start a fresh folder.
 
 Adding a backend: implement `NoteStorage`, then run the shared contract suite against it (`tests/storage-contract.ts`, used by `tests/storage.test.ts` for `LocalStorage`, an in-memory fake and `DriveStorage` against an in-process fake Drive, `tests/fake-drive.ts`). Anything that passes it behaves like the disk.
 
@@ -281,8 +281,8 @@ Each person who signs in gets their own notes, search index, vault, wiki and bac
 The owner identity (`INGEST_TOKEN`, `MCP_TOKEN`, and devices connected before Google sign-in) keeps the folders it always had. **Notes recorded before you switched to Google sign-in belong to that identity, not to your Google account**, so a new Google-connected device or ChatGPT starts with an empty brain. To hand them over, sign in once with the Google account that should own them, stop the server, and run:
 
 ```bash
-docker compose run --rm --no-deps voicebrain node src/main.ts adopt-owner you@gmail.com          # report only
-docker compose run --rm --no-deps voicebrain node src/main.ts adopt-owner you@gmail.com --apply  # do it
+docker compose run --rm --no-deps aution node src/main.ts adopt-owner you@gmail.com          # report only
+docker compose run --rm --no-deps aution node src/main.ts adopt-owner you@gmail.com --apply  # do it
 ```
 
 It moves the owner's notes and vault (wiki pages included) to that person, drops the old search index (rebuilt at start), and re-links the devices and ChatGPT connections made before the switch. It refuses if that person already has notes of their own, so it never merges or overwrites. `INGEST_TOKEN` and `MCP_TOKEN` stay on the owner identity. This is for local storage; with `STORAGE_BACKEND=drive` the owner identity keeps using this disk, and a person's notes are in their Drive.
@@ -322,7 +322,7 @@ Tests run the whole pipeline against fake transcription and language-model serve
 - **Google itself.** Sign-in is tested against a fake Google (real token endpoint behaviour, PKCE and a JWKS that rotates) because no credentials existed when it was written. The first real sign-in is the real test.
 - **ChatGPT itself.** The OAuth and MCP flow is tested with the official MCP client and a hand-driven PKCE flow, not with ChatGPT. Its connector feature is in beta and its menus move.
 - **`large-v3-turbo` through the Whisper server.** The benchmark ran the model directly in faster-whisper; the end-to-end pipeline run used `small.en`. The server code is model-independent, but it has not been run with turbo, and the first start downloads about 1.6 GB.
-- **The Docker images and compose file.** No Docker daemon was available where this was built. The Whisper server and the voicebrain server were each run directly (Python venv, Node), not in their containers, so the `Dockerfile`s, the model download on first start, and the compose networking have never been built. They are short; `docker compose build` will show problems quickly.
+- **The Docker images and compose file.** No Docker daemon was available where this was built. The Whisper server and the aution server were each run directly (Python venv, Node), not in their containers, so the `Dockerfile`s, the model download on first start, and the compose networking have never been built. They are short; `docker compose build` will show problems quickly.
 - **Speed on your VPS.** Timings above come from a 4-vCPU sandbox.
 - **Groq** and other OpenAI-compatible transcription services: covered by tests with fakes only.
 

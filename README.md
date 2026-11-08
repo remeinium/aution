@@ -1,4 +1,4 @@
-# voicebrain (the recorder app)
+# aution (the recorder app)
 
 Record a voice note. When you tap **Stop**, everything after that happens on its own: the note is saved on the device, then uploaded to your server, retried if the connection is bad, and finished even if you have closed the app.
 
@@ -30,7 +30,7 @@ The other half is `server/`: it receives the uploads, transcribes them on its ow
 - **Import audio** adds existing recordings (m4a, mp3, wav, ogg, …) to the same queue.
 
 **Settings**
-- **Sign in to voicebrain** is one tap: the app asks your server for a code, opens the server's approval page, and connects by itself after you sign in with Google there once. Nothing is copied or pasted, and each device gets its own token that can be revoked (**Sign out of this device** does it; **Manage account** opens your account page, where you can also sign out of the browser and connect or disconnect Google Drive). Typing an address and token by hand is still there under *Advanced*, and so are pairing links.
+- **Sign in to aution** is one tap: the app asks your server for a code, opens the server's approval page, and connects by itself after you sign in with Google there once. Nothing is copied or pasted, and each device gets its own token that can be revoked (**Sign out of this device** does it; **Manage account** opens your account page, where you can also sign out of the browser and connect or disconnect Google Drive). Typing an address and token by hand is still there under *Advanced*, and so are pairing links.
 - **Test connection**, auto-upload on/off, how long to keep audio on the device after upload (0 days to forever), storage use, "Keep my data" (persistent storage), install help.
 
 **Works offline** from the first launch (the build output is precached).

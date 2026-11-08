@@ -26,7 +26,7 @@ export async function runCli(command: string[], prompt: string, options: { timeo
   if (!program) throw new PermanentError('No command is set to sort notes with.')
   const viaArgument = rest.some(arg => arg.includes('{prompt}'))
   const args = rest.map(arg => arg.replaceAll('{prompt}', prompt))
-  const cwd = await mkdtemp(join(tmpdir(), 'voicebrain-llm-'))
+  const cwd = await mkdtemp(join(tmpdir(), 'aution-llm-'))
   try {
     return await new Promise<string>((resolve, reject) => {
       const child = spawn(program, args, { cwd, env: options.env ?? cliEnvironment(), stdio: ['pipe', 'pipe', 'pipe'] })

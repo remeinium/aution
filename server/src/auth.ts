@@ -32,8 +32,8 @@ main{width:min(100%,460px);padding:32px;border:1px solid #262626;border-radius:2
 h1{margin:0 0 12px;font-size:28px;font-weight:450;letter-spacing:-.05em}p{color:#b5b5b5}a{color:#d5bea7}`
 
 export function messagePage(title: string, message: string, link?: { href: string; text: string }): string {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${escapeHtml(title)} · voicebrain</title><style>${STYLE}</style></head>
-<body><main><p class="eyebrow">voicebrain</p><h1>${escapeHtml(title)}</h1><p>${escapeHtml(message)}</p>${link ? `<p><a href="${escapeHtml(link.href)}">${escapeHtml(link.text)}</a></p>` : ''}</main></body></html>`
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${escapeHtml(title)} · aution</title><style>${STYLE}</style></head>
+<body><main><p class="eyebrow">aution</p><h1>${escapeHtml(title)}</h1><p>${escapeHtml(message)}</p>${link ? `<p><a href="${escapeHtml(link.href)}">${escapeHtml(link.text)}</a></p>` : ''}</main></body></html>`
 }
 
 export interface AuthKit {
@@ -88,10 +88,10 @@ export function createAuth(options: { users: Users; google: GoogleAuth; publicUr
       const result = users.signIn(profile)
       if (!result.ok) {
         console.error(`sign-in refused: ${result.reason}`)
-        page(res, 403, 'Not allowed', result.reason === 'instance-claimed' ? 'This voicebrain already belongs to someone else.' : 'This Google account is not on the list for this voicebrain.')
+        page(res, 403, 'Not allowed', result.reason === 'instance-claimed' ? 'This aution already belongs to someone else.' : 'This Google account is not on the list for this aution.')
         return
       }
-      if (result.claimed) console.log('voicebrain claimed by its first sign-in')
+      if (result.claimed) console.log('aution claimed by its first sign-in')
       const session = users.createSession(result.user.id)
       res.append('Set-Cookie', cookie(SESSION_COOKIE, session.token, Math.floor((session.expiresAt - Date.now()) / 1000)))
       res.setHeader('Cache-Control', 'no-store')
@@ -125,7 +125,7 @@ export function createAuth(options: { users: Users; google: GoogleAuth; publicUr
         const grant = await google.finishDrive({ code: req.query.code, state: req.query.state, error: req.query.error }, parseCookies(req.headers.cookie)[DRIVE_COOKIE] ?? '', user.id)
         res.append('Set-Cookie', cookie(DRIVE_COOKIE, '', 0, '/auth/drive'))
         drive.save(user.id, grant)
-        page(res, 200, 'Drive connected', 'voicebrain can now keep your notes in your own Google Drive. Go back to the app.')
+        page(res, 200, 'Drive connected', 'aution can now keep your notes in your own Google Drive. Go back to the app.')
       } catch (error) {
         if (error instanceof SignInError) { res.append('Set-Cookie', cookie(DRIVE_COOKIE, '', 0, '/auth/drive')); page(res, error.status, 'Drive not connected', error.message, { href: '/auth/drive/start', text: 'Try again' }); return }
         next(error)
@@ -138,10 +138,10 @@ export function createAuth(options: { users: Users; google: GoogleAuth; publicUr
   const agentSnippets = (secret: string) => {
     const url = `${publicUrl}/mcp`
     return [
-      `Claude Code:\nclaude mcp add --transport http voicebrain ${url} --header "Authorization: Bearer ${secret}"`,
-      `opencode (opencode.json):\n{ "mcp": { "voicebrain": { "type": "remote", "url": "${url}", "oauth": false, "headers": { "Authorization": "Bearer ${secret}" } } } }`,
-      `Cursor (~/.cursor/mcp.json):\n{ "mcpServers": { "voicebrain": { "url": "${url}", "headers": { "Authorization": "Bearer ${secret}" } } } }`,
-      `Codex (~/.codex/config.toml), with the key in the VOICEBRAIN_KEY environment variable:\n[mcp_servers.voicebrain]\nurl = "${url}"\nbearer_token_env_var = "VOICEBRAIN_KEY"`,
+      `Claude Code:\nclaude mcp add --transport http aution ${url} --header "Authorization: Bearer ${secret}"`,
+      `opencode (opencode.json):\n{ "mcp": { "aution": { "type": "remote", "url": "${url}", "oauth": false, "headers": { "Authorization": "Bearer ${secret}" } } } }`,
+      `Cursor (~/.cursor/mcp.json):\n{ "mcpServers": { "aution": { "url": "${url}", "headers": { "Authorization": "Bearer ${secret}" } } } }`,
+      `Codex (~/.codex/config.toml), with the key in the AUTION_KEY environment variable:\n[mcp_servers.aution]\nurl = "${url}"\nbearer_token_env_var = "AUTION_KEY"`,
     ].join('\n\n')
   }
   const keysBlock = (user: User, secret = '') => {
@@ -155,9 +155,9 @@ export function createAuth(options: { users: Users; google: GoogleAuth; publicUr
     const driveBlock = !drive ? '' : connected
       ? `<h2>Google Drive</h2><p>Connected. Your notes are kept in your own Drive.</p><form method="post" action="/account/drive/disconnect"><button class="quiet" type="submit">Disconnect Drive</button></form>`
       : `<h2>Google Drive</h2><p>Not connected yet. Connect it so your notes are kept in your own Drive.</p><p><a class="btn" href="/auth/drive/start">Connect Google Drive</a></p>`
-    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Your account · voicebrain</title><style>${STYLE}
+    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Your account · aution</title><style>${STYLE}
 h2{margin:24px 0 6px;font-size:15px;font-weight:600;letter-spacing:0;color:#eee}.btn,button{display:inline-block;padding:10px 16px;border-radius:999px;border:1px solid #3a3a3a;background:#d5bea7;color:#111;font:inherit;font-weight:600;text-decoration:none;cursor:pointer}button.quiet{background:none;color:#eee}.note{color:#d5bea7}pre{white-space:pre-wrap;word-break:break-all;background:#0b0b0b;border:1px solid #262626;border-radius:12px;padding:12px;font-size:12px;color:#eee}ul.keys{list-style:none;padding:0;margin:12px 0}ul.keys li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0;border-top:1px solid #262626}ul.keys small{display:block;color:#888}form.inline{display:flex;gap:8px;flex-wrap:wrap}form.inline input{flex:1;min-width:160px;padding:10px 12px;border-radius:10px;border:1px solid #3a3a3a;background:#0b0b0b;color:#eee;font:inherit}</style></head>
-<body><main><p class="eyebrow">voicebrain</p><h1>Your account</h1>${notice ? `<p class="note" role="status">${escapeHtml(notice)}</p>` : ''}<p>Signed in as <strong>${escapeHtml(user.email)}</strong>.</p>${driveBlock}
+<body><main><p class="eyebrow">aution</p><h1>Your account</h1>${notice ? `<p class="note" role="status">${escapeHtml(notice)}</p>` : ''}<p>Signed in as <strong>${escapeHtml(user.email)}</strong>.</p>${driveBlock}
 ${keysBlock(user, secret)}
 <h2>Sign out</h2><p>This signs out this browser. Phones and computers you connected stay connected until you disconnect them in the app.</p><form method="post" action="/account/signout"><button class="quiet" type="submit">Sign out</button></form></main></body></html>`
   }
@@ -175,7 +175,7 @@ ${keysBlock(user, secret)}
     if (!originOk(req)) { page(res, 403, 'Not allowed', 'This request came from another site.'); return }
     users.endSession(parseCookies(req.headers.cookie)[SESSION_COOKIE] ?? '')
     res.append('Set-Cookie', cookie(SESSION_COOKIE, '', 0))
-    page(res, 200, 'Signed out', 'You are signed out of voicebrain in this browser.', { href: '/account', text: 'Sign in again' })
+    page(res, 200, 'Signed out', 'You are signed out of aution in this browser.', { href: '/account', text: 'Sign in again' })
   })
   router.post('/account/keys', express.urlencoded({ extended: false }), (req, res) => {
     if (!originOk(req)) { page(res, 403, 'Not allowed', 'This request came from another site.'); return }
@@ -200,6 +200,16 @@ ${keysBlock(user, secret)}
       await drive?.disconnect(user.id)
       sendAccount(res, user, 'Google Drive is disconnected.')
     } catch (error) { next(error) }
+  })
+
+  // From the approval page: end this browser's session and start Google sign-in again, which shows the account chooser.
+  router.post('/pair/switch', express.urlencoded({ extended: false }), (req, res) => {
+    if (!originOk(req)) { page(res, 403, 'Not allowed', 'This request came from another site.'); return }
+    users.endSession(parseCookies(req.headers.cookie)[SESSION_COOKIE] ?? '')
+    res.append('Set-Cookie', cookie(SESSION_COOKIE, '', 0))
+    const code = typeof req.body?.code === 'string' ? req.body.code.replace(/[^A-Za-z0-9-]/g, '').slice(0, 12) : ''
+    res.setHeader('Cache-Control', 'no-store')
+    res.redirect(303, signInUrl(code ? `/pair?code=${encodeURIComponent(code)}` : '/pair'))
   })
 
   router.post('/auth/logout', (req, res) => {

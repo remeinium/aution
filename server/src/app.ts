@@ -149,7 +149,8 @@ export function createApp(config: Config, options: PipelineOptions = {}, authOpt
   app.get('/v1/pair/offer/:id', (req, res) => { res.json({ status: pairing ? pairing.offerStatus(String(req.params.id), res.locals.userId as string) : 'expired' }) })
   app.get('/v1/devices', (_req, res) => {
     const mine = (res.locals.device as { id: string } | undefined)?.id
-    res.json({ devices: devices.list().map(device => ({ ...device, current: device.id === mine })) })
+    // A person sees their own devices only; the server's own admin token (INGEST_TOKEN) sees all of them.
+    res.json({ devices: devices.list(res.locals.admin ? undefined : String(res.locals.userId)).map(device => ({ ...device, current: device.id === mine })) })
   })
   app.delete('/v1/devices/:id', (req, res) => {
     // A device can disconnect itself; the owner's own token can disconnect any device.
@@ -267,7 +268,7 @@ export function createApp(config: Config, options: PipelineOptions = {}, authOpt
     if (provider) {
       const issuerUrl = new URL(config.publicUrl)
       app.use(mcpAuthRouter({
-        provider, issuerUrl, resourceServerUrl: new URL(mcpUrl), scopesSupported: ['mcp'], resourceName: 'voicebrain',
+        provider, issuerUrl, resourceServerUrl: new URL(mcpUrl), scopesSupported: ['mcp'], resourceName: 'aution',
         // Registered clients never expire: this is one person's own server, and a connector that silently dies after 30 days is worse than no expiry.
         clientRegistrationOptions: { clientSecretExpirySeconds: 0 },
       }))
@@ -296,7 +297,7 @@ export function createApp(config: Config, options: PipelineOptions = {}, authOpt
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if ((error as { type?: string })?.type === 'entity.parse.failed') { res.status(400).json({ error: 'The request body is not valid JSON.' }); return }
     // Their Drive is not connected, or access was revoked: not a server fault. The app shows a "Connect Drive" button for this.
-    if (error instanceof DriveNotConnected) { if (!res.headersSent) res.status(409).json({ error: 'Google Drive is not connected. Open voicebrain and connect your Drive.', code: 'drive-not-connected', connectPath: '/auth/drive/start' }); return }
+    if (error instanceof DriveNotConnected) { if (!res.headersSent) res.status(409).json({ error: 'Google Drive is not connected. Open aution and connect your Drive.', code: 'drive-not-connected', connectPath: '/auth/drive/start' }); return }
     console.error(error)
     if (!res.headersSent) res.status(500).json({ error: 'server error' })
   })

@@ -43,7 +43,7 @@ export function parseDuration(text: string): number | null {
  * Null when the response does not say.
  */
 export function parseResetMs(headers: Headers, bodyText: string, now: number = Date.now()): number | null {
-  const own = headers.get('x-voicebrain-retry-after-ms') ?? headers.get('retry-after-ms')
+  const own = headers.get('x-aution-retry-after-ms') ?? headers.get('retry-after-ms')
   if (own && /^\d+(\.\d+)?$/.test(own.trim())) return Math.round(Number(own))
   const after = headers.get('retry-after')?.trim()
   if (after) {
@@ -158,7 +158,7 @@ export async function withKeys(apiKeys: string, request: (key: string) => Promis
   // Every key is limited. Report the soonest any of them frees up, because that is when work can carry on.
   if (last && waits.length) {
     const headers = new Headers(last.headers)
-    headers.set('x-voicebrain-retry-after-ms', String(Math.min(...waits)))
+    headers.set('x-aution-retry-after-ms', String(Math.min(...waits)))
     return new Response(await last.text(), { status: 429, headers })
   }
   return last as Response

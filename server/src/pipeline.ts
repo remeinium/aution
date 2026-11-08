@@ -89,7 +89,10 @@ export class Pipeline {
   }
 
   private async pass(): Promise<void> {
-    for (const id of await this.brain.store.ids()) await this.process(id)
+    for (const id of await this.brain.store.ids()) {
+      // Reading one note's state can fail on its own (a Drive call timing out); the rest of this person's notes still get their turn.
+      try { await this.process(id) } catch (error) { this.log(`could not work on ${id.slice(0, 8)} this time: ${errorText(error)}`) }
+    }
   }
 
   /** Applies the storage's retainAudio policy. Failing to evict a cache is not a reason to fail the note. */

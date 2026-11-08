@@ -16,9 +16,9 @@ val tauriProperties = Properties().apply {
 
 android {
     compileSdk = 37
-    namespace = "com.remeinium.jss"
+    namespace = "com.remeinium.aution"
     defaultConfig {
-        applicationId = "com.remeinium.jss"
+        applicationId = "com.remeinium.aution"
         minSdk = 26
         targetSdk = 37
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()

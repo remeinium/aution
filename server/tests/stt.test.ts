@@ -9,7 +9,7 @@ import { TRANSCRIPT, fakeStt, type Fake } from './helpers.ts'
 let dir = ''
 let audio = ''
 let stt: Fake
-const config = (extra = {}) => ({ provider: 'openai' as const, baseUrl: stt.url, apiKey: 'secret', model: 'whisper-large-v3-turbo', language: 'en', maxMb: 24, prompt: 'Trapper, voicebrain', ...extra })
+const config = (extra = {}) => ({ provider: 'openai' as const, baseUrl: stt.url, apiKey: 'secret', model: 'whisper-large-v3-turbo', language: 'en', maxMb: 24, prompt: 'Trapper, aution', ...extra })
 
 beforeAll(async () => {
   dir = await mkdtemp(join(tmpdir(), 'stt-'))
@@ -27,7 +27,7 @@ describe('transcription client', () => {
     expect(transcript.segments[1]).toMatchObject({ start: 3.5, end: 6.5, text: 'I also had an idea about the Trapper app.' })
     expect(transcript.suspectedSilence).toBe(false)
     const sent = stt.requests.at(-1)?.fields
-    expect(sent).toMatchObject({ model: 'whisper-large-v3-turbo', language: 'en', response_format: 'verbose_json', temperature: '0', prompt: 'Trapper, voicebrain', file: 'file:5' })
+    expect(sent).toMatchObject({ model: 'whisper-large-v3-turbo', language: 'en', response_format: 'verbose_json', temperature: '0', prompt: 'Trapper, aution', file: 'file:5' })
     expect(stt.requests.at(-1)?.path).toBe('/audio/transcriptions')
   })
 

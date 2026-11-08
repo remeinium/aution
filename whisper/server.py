@@ -3,7 +3,7 @@
     POST /v1/audio/transcriptions   multipart: file, model, language, prompt, response_format, temperature
     GET  /health
 
-Runs faster-whisper on CPU. The voicebrain server talks to it over the private compose network, so audio never
+Runs faster-whisper on CPU. The aution server talks to it over the private compose network, so audio never
 leaves your machine. Nothing here is published to the internet.
 """
 import os

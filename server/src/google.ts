@@ -145,8 +145,8 @@ export class GoogleAuth {
     const refresh = typeof body.refresh_token === 'string' ? body.refresh_token : ''
     const undo = async (reason: SignInError) => { await this.revoke(refresh || access); return reason }
     if (!access) throw new SignInError(502, 'Google did not accept the Drive connection. Start again.')
-    if (typeof body.scope !== 'string' || !body.scope.split(' ').includes(DRIVE_SCOPE)) throw await undo(new SignInError(403, 'Google Drive access was not granted. On Google’s screen, tick the box that lets voicebrain use Drive files, then try again.'))
-    if (!refresh) throw await undo(new SignInError(502, 'Google did not give a lasting Drive connection. Remove voicebrain at myaccount.google.com/permissions and try again.'))
+    if (typeof body.scope !== 'string' || !body.scope.split(' ').includes(DRIVE_SCOPE)) throw await undo(new SignInError(403, 'Google Drive access was not granted. On Google’s screen, tick the box that lets aution use Drive files, then try again.'))
+    if (!refresh) throw await undo(new SignInError(502, 'Google did not give a lasting Drive connection. Remove aution at myaccount.google.com/permissions and try again.'))
     if ((await this.subjectOf(access)) !== userId) throw await undo(new SignInError(403, 'That is a different Google account from the one you are signed in with. Choose the same account.'))
     return { refreshToken: refresh, accessToken: access, expiresIn: typeof body.expires_in === 'number' && body.expires_in > 0 ? body.expires_in : 3600 }
   }

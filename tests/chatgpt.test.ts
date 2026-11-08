@@ -29,6 +29,6 @@ describe('the instruction pasted into ChatGPT', () => {
 
   it('is short enough for ChatGPT’s custom instructions and says what plugin it is about', () => {
     expect(CUSTOM_INSTRUCTION.length).toBeLessThan(1500)
-    expect(CUSTOM_INSTRUCTION).toContain('voicebrain')
+    expect(CUSTOM_INSTRUCTION).toContain('aution')
   })
 })

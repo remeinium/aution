@@ -63,7 +63,7 @@ export async function handleIngest(request: Request, response: Response, store: 
     audioBytes: 0,
   }
   const extension = EXTENSIONS[mime.split(';')[0]?.trim().toLowerCase() ?? ''] ?? 'bin'
-  const stored = await store.saveUpload(meta, new Uint8Array(await audio.arrayBuffer()), extension)
+  const stored = await store.saveUpload(meta, audio.stream(), extension, audio.size) // streamed: no second copy of the recording in memory
   if (!stored) { response.status(409).json({ ok: true, id, duplicate: true }); return null }
   response.status(201).json({ ok: true, id })
   return meta

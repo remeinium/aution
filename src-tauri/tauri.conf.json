@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "jssayso",
+  "productName": "aution",
   "version": "../package.json",
-  "identifier": "com.remeinium.jss",
+  "identifier": "com.remeinium.aution",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "jssayso",
+        "title": "aution",
         "width": 460,
         "height": 860,
         "minWidth": 360,

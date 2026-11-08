@@ -1,4 +1,4 @@
-package com.remeinium.jss
+package com.remeinium.aution
 
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
