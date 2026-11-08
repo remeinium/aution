@@ -26,9 +26,9 @@ ChatGPT ◀──MCP over HTTPS──── brief · search · recent · get_not
 - If the recognizer returns only filler (Whisper often invents "Thank you." over silence), the note is flagged "Possibly no speech" instead of being summarized.
 - Notes are transcribed, filed and searchable the moment they are written down, whether or not anything has sorted them into tasks and ideas yet. Sorting happens when the assistant does it (see *Who sorts the notes*), so a missing or busy assistant never loses or blocks a note.
 
-## Run it on the VPS
+## Run it on your own server
 
-Needs Docker with the compose plugin. If the machine already runs other services, read `deploy/AGENT_HANDOFF.md`: it deploys in stages and checks at each one that nothing else was disturbed.
+Needs Docker with the compose plugin. If the machine already runs other services, deploy in stages and snapshot what is running first (`docker ps`, open ports, your reverse proxy config) so you can confirm afterwards that nothing else was disturbed. Never run `docker system prune` on a shared host.
 
 ```bash
 git clone https://github.com/remeinium/aution && cd aution

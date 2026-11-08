@@ -21,6 +21,20 @@ export function normalizeEndpoint(input: string): string {
   }
 }
 
+/** Server addresses the product has moved away from. Temporary: delete an entry once the devices that used it have reconnected. Same backend and same device tokens, so a device that saved one keeps working on the new one. */
+const MOVED_HOSTS: Record<string, string> = { 'vb.kusaldarshana.com': 'https://aution.remeinium.com' }
+
+/** The current address for one a device saved before the move; anything else comes back unchanged. */
+export function currentEndpoint(saved: string): string {
+  try {
+    const url = new URL(normalizeEndpoint(saved))
+    const moved = MOVED_HOSTS[url.hostname.toLowerCase()]
+    return moved ? `${moved}${url.pathname.replace(/\/+$/, '')}` : saved
+  } catch {
+    return saved
+  }
+}
+
 export function isConfigured(settings: Pick<Settings, 'endpoint'>): boolean {
   return normalizeEndpoint(settings.endpoint) !== ''
 }

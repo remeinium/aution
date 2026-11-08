@@ -116,7 +116,7 @@ Filled in on a real phone.
 - The app starts (cold start 1.04 s) and shows the same UI as the website, branded aution. No console or CSP errors.
 - Microphone: Android's own prompt appears on the first Record (wry asks for it); recording works with the screen on;
   a 57 s note was saved on the device and its level meter responds to speech.
-- One-tap pairing with `https://vb.kusaldarshana.com`: the approval page opened in the **system browser**
+- One-tap pairing with the server (`https://aution.remeinium.com`): the approval page opened in the **system browser**
   (`src/native/links.ts`), Google sign-in there, the app connected by itself and the note uploaded ("Uploaded").
   So the server already accepts the app's origin `https://tauri.localhost` (it sends `*`).
 - Settings has no PWA "Install" section in the app.
@@ -130,7 +130,7 @@ Things found on the way:
   prompt shown. Workaround: `adb push` the APK to Downloads and install it from the Files app.
 - In debug mode the phone shows up as USB id `18d1:4ee7` (Google), not Xiaomi's `2717`; the udev rule needs `18d1`.
 - The server's approval page reuses the browser's server session, so switching Google accounts means signing out
-  at `https://vb.kusaldarshana.com/account` first (see "Needs from the server").
+  at `https://aution.remeinium.com/account` first (see "Needs from the server").
 - The Recording setting "The Record shortcut on your home screen always does this" refers to the PWA shortcut; the
   native app has no shortcut yet.
 
