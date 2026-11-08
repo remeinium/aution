@@ -72,7 +72,6 @@ h2 { font-size: var(--font-size-section); line-height: 1.2; font-weight: 500; le
 @keyframes record-pulse { from { transform: scale(.94); opacity: .5; } to { transform: scale(1.12); opacity: 0; } }
 .timer-message { min-height: 38px; margin-top: 16px; color: var(--color-text-secondary); font-size: 13px; text-align: center; }
 .timer-message.is-alert { color: var(--color-error); }
-.timer-help { margin-top: 4px; color: var(--color-text-muted); font-size: 11px; line-height: 1.4; text-align: center; }
 
 .recent-column { padding-top: 6px; }
 .recent-list { border-top: 1px solid var(--color-border); }
