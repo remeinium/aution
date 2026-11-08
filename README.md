@@ -1,5 +1,7 @@
 # aution (the recorder app)
 
+*aution* is short for *audio notion*. It is free software ([AGPL-3.0](LICENSE)) that you run on your own server: your recordings, transcripts and notes stay with you. See [Contributing](CONTRIBUTING.md) and [Security](SECURITY.md).
+
 Record a voice note. When you tap **Stop**, everything after that happens on its own: the note is saved on the device, then uploaded to your server, retried if the connection is bad, and finished even if you have closed the app.
 
 It is a PWA (installable on Android, desktop and iPhone) built the same way as Trapper: Vite, React 19, TypeScript, the shared `tokens.css` design system, and a Tauri shell for desktop.
