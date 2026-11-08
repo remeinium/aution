@@ -8,14 +8,14 @@
  */
 export const BRAND = {
   /** Shown to people: window title, top bar, home screen, notification. */
-  name: 'jssayso',
+  name: 'aution',
   /** One line, for the page description and store listings. */
-  tagline: 'Just say so. Record a voice note and it reaches your notes on its own.',
+  tagline: 'Audio notion. Record a voice note and it reaches your notes on its own.',
   /**
    * The Android application id (and later the iOS bundle id). PERMANENT once an APK reaches real users:
    * Android treats a different id as a different app, so changing it later breaks updates for everyone.
    */
-  appId: 'com.remeinium.jss',
+  appId: 'com.remeinium.aution',
   /** The project's website. */
-  website: 'https://jss.remeinium.com',
+  website: 'https://aution.remeinium.com',
 } as const

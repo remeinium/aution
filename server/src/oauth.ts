@@ -142,13 +142,13 @@ export class OwnerOAuthProvider implements OAuthServerProvider {
   page(id: string, client: OAuthClientInformationFull, message = '', signedInAs = ''): string {
     const name = escapeHtml(client.client_name ?? 'An application')
     const host = escapeHtml(new URL(client.redirect_uris[0] ?? 'https://unknown.invalid').host)
-    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Approve access · voicebrain</title>
+    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Approve access · aution</title>
 <style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:#0b0b0b;color:#eee;font:14px/1.6 "Red Hat Display","Inter",system-ui,sans-serif}
 main{width:min(100%,460px);padding:32px;border:1px solid #262626;border-radius:20px;background:#121212}p.eyebrow{margin:0 0 14px;color:#888;font-size:11px;letter-spacing:.15em;text-transform:uppercase}
 h1{margin:0 0 12px;font-size:28px;font-weight:450;letter-spacing:-.05em}p{color:#b5b5b5}strong{color:#eee;font-weight:550}label{display:block;margin-top:22px;color:#b5b5b5;font-size:12px}
 input{display:block;width:100%;margin-top:8px;padding:12px;border:1px solid #3a3a3a;border-radius:10px;color:#eee;background:#0b0b0b;font:inherit}input:focus-visible,button:focus-visible{outline:2px solid #d5bea7;outline-offset:2px}
 .row{display:flex;gap:10px;margin-top:20px}button{flex:1;padding:12px;border:0;border-radius:10px;font:inherit;font-size:13px;font-weight:650;cursor:pointer}.go{color:#0b0b0b;background:#eee}.no{color:#b5b5b5;background:#262626}.msg{margin:16px 0 0;color:#e4a6a6}</style></head>
-<body><main><p class="eyebrow">voicebrain</p><h1>Approve access</h1>
+<body><main><p class="eyebrow">aution</p><h1>Approve access</h1>
 <p><strong>${name}</strong> (${host}) wants to read your voice notes and wiki, mark tasks done, and write wiki pages. Only approve if you started this from your own assistant.</p>
 ${message ? `<p class="msg" role="alert">${escapeHtml(message)}</p>` : ''}
 <form method="post" action="/authorize/decision"><input type="hidden" name="request" value="${escapeHtml(id)}">

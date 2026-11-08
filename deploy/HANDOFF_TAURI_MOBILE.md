@@ -11,7 +11,7 @@ Node 22.18+ (24 recommended), `gh auth login` as the repo owner, a phone with US
 ---
 
 ```
-You are building the native mobile app for voicebrain: a Tauri 2 app, Android first (iOS later), that wraps the existing
+You are building the native mobile app for aution: a Tauri 2 app, Android first (iOS later), that wraps the existing
 React UI and adds the things a browser cannot do. You are on the owner's laptop with the Android toolchain installed.
 Another Claude session works on server/ and the docs at the same time on the same repo, so stay inside your lane (below).
 
@@ -76,7 +76,7 @@ CONSTRAINTS
   the licence of every plugin or library you add in docs/mobile.md. Do not add anything that is not AGPL-compatible.
 - NAME: the product name is NOT decided yet. Keep the display name, the application id and the URLs in ONE place
   (tauri.conf.json plus a small src/brand.ts) so the rename is a one-line change. Use the placeholder id
-  dev.voicebrain.app for now, and WARN the owner clearly that no APK may go to real users before the final id is set,
+  dev.aution.app for now, and WARN the owner clearly that no APK may go to real users before the final id is set,
   because changing the application id later breaks updates for everyone.
 - Be honest: if something was not run on a real phone, say "untested". Prefer a smaller thing that works to a bigger one that
   almost works. Research current Tauri 2 mobile docs for plugin APIs; do not guess from memory.

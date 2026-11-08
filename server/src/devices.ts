@@ -52,8 +52,12 @@ export class Devices {
     return { id: row.id, name: row.name, userId: row.user_id, createdAt: row.created_at, lastSeenAt: row.last_seen_at }
   }
 
-  list(): Device[] {
-    return (this.db.prepare('SELECT id, name, user_id, created_at, last_seen_at FROM devices WHERE revoked_at IS NULL ORDER BY created_at').all() as unknown as Row[])
+  /** Active devices. With `userId`, only that person's; without it, everyone's (the server's own admin token). */
+  list(userId?: string): Device[] {
+    const rows = userId === undefined
+      ? this.db.prepare('SELECT id, name, user_id, created_at, last_seen_at FROM devices WHERE revoked_at IS NULL ORDER BY created_at').all()
+      : this.db.prepare('SELECT id, name, user_id, created_at, last_seen_at FROM devices WHERE revoked_at IS NULL AND user_id = ? ORDER BY created_at').all(userId)
+    return (rows as unknown as Row[])
       .map(row => ({ id: row.id, name: row.name, userId: row.user_id, createdAt: row.created_at, lastSeenAt: row.last_seen_at }))
   }
 

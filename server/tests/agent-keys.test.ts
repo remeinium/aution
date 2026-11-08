@@ -107,7 +107,7 @@ describe('keys through the running server', () => {
     const { html, secret } = await make(browser)
     expect(secret).toMatch(/^vbk_/)
     expect(html).toContain('will not be shown again')
-    expect(html).toContain(`claude mcp add --transport http voicebrain ${origin}/mcp --header &quot;Authorization: Bearer ${secret}&quot;`)
+    expect(html).toContain(`claude mcp add --transport http aution ${origin}/mcp --header &quot;Authorization: Bearer ${secret}&quot;`)
     expect(html).toContain('opencode.json')
     expect(html).toContain('&quot;oauth&quot;: false')
     expect(html).toContain('.cursor/mcp.json')

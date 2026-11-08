@@ -77,7 +77,7 @@ const OVERWRITES = { readOnlyHint: false, destructiveHint: true, idempotentHint:
 
 /** One server per request (stateless), all tools reading the same brain. */
 export function createMcpServer(brain: Brain): McpServer {
-  const server = new McpServer({ name: 'voicebrain', version: '0.2.0' }, { instructions: INSTRUCTIONS })
+  const server = new McpServer({ name: 'aution', version: '0.2.0' }, { instructions: INSTRUCTIONS })
 
   const candidates = (rows: NoteRow[]) => rows.map(row => `- ${quoted(row.title)} — ${when(row.day, row.time, brain.today())}`).join('\n')
 

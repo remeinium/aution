@@ -1,4 +1,4 @@
-/* voicebrain. Uses the shared Trapper tokens (tokens.css) and the patterns in design.md. */
+/* aution. Uses the shared Trapper tokens (tokens.css) and the patterns in design.md. */
 *, *::before, *::after { box-sizing: border-box; }
 html, body, #root { min-height: 100%; margin: 0; background: var(--color-canvas); }
 body { min-width: 320px; color: var(--color-text); font-family: var(--font-ui); font-size: var(--font-size-body); line-height: var(--line-height-body); }

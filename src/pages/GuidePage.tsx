@@ -28,7 +28,7 @@ export function GuidePage() {
     <div className="shell narrow">
       <p className="eyebrow">Help</p>
       <h1>User guide</h1>
-      <p className="lede">voicebrain keeps your voice notes. You record, it writes them down word for word, your notes are kept in your own Google Drive, and ChatGPT sorts them into tasks and ideas and answers questions about them.</p>
+      <p className="lede">aution keeps your voice notes. You record, it writes them down word for word, your notes are kept in your own Google Drive, and ChatGPT sorts them into tasks and ideas and answers questions about them.</p>
       <nav className="guide-contents" aria-label="Guide contents">
         <a href="#guide-signin">Sign in</a><a href="#guide-record">Record</a><a href="#guide-library">Your notes</a><a href="#guide-drive">Google Drive</a><a href="#guide-chatgpt">ChatGPT</a><a href="#guide-ask">Ask</a><a href="#guide-agents">Coding agents</a><a href="#guide-install">Install</a><a href="#guide-privacy">Privacy</a><a href="#guide-help">If something is wrong</a>
       </nav>
@@ -36,11 +36,11 @@ export function GuidePage() {
       <section className="settings-section guide-section" id="guide-signin" aria-labelledby="g1">
         <h2 id="g1">1. Sign in</h2>
         <p>You sign in once on each phone or computer, with your Google account. There is no password to remember.</p>
-        <Shot file="signin.png" alt="The Record screen before signing in, with a Sign in to voicebrain button" />
+        <Shot file="signin.png" alt="The Record screen before signing in, with a Sign in to aution button" />
         <ol className="steps">
-          <li>Tap <strong>Sign in</strong> (at the top, or on the Record screen). Your voicebrain server opens in a new tab.</li>
+          <li>Tap <strong>Sign in</strong> (at the top, or on the Record screen). Your aution server opens in a new tab.</li>
           <li>Google asks you to choose your account and sign in. Use the account the owner added for you.</li>
-          <li>voicebrain shows <strong>Connect a device</strong>, with your phone’s name and a code. Check the code is the one on your phone, then tap <strong>Approve</strong>.</li>
+          <li>aution shows <strong>Connect a device</strong>, with your phone’s name and a code. Check the code is the one on your phone, then tap <strong>Approve</strong>.</li>
           <li>Go back to the app. It connects by itself a moment later, and Sign in turns into Sign out.</li>
         </ol>
         <Shot file="approve-device.png" alt="The Connect a device page: the device name, the code, who you are signed in as, and Deny and Approve buttons" />
@@ -73,7 +73,7 @@ export function GuidePage() {
 
       <section className="settings-section guide-section" id="guide-drive" aria-labelledby="g4">
         <h2 id="g4">4. Google Drive</h2>
-        <p>Your notes live in a folder called <strong>voicebrain</strong> in your own Google Drive, one folder per note. Only you can open it. If Settings says Drive is not connected, tap <strong>Connect Google Drive</strong> and approve it once. voicebrain can only see the folder it made, not the rest of your Drive.</p>
+        <p>Your notes live in a folder called <strong>aution</strong> in your own Google Drive, one folder per note. Only you can open it. If Settings says Drive is not connected, tap <strong>Connect Google Drive</strong> and approve it once. aution can only see the folder it made, not the rest of your Drive.</p>
         <p>Your <strong>account page</strong> (Settings → Manage account) shows who you are signed in as and lets you disconnect Drive or sign out of the browser.</p>
         <Shot file="settings.png" alt="Settings with the connection card showing who is signed in" />
       </section>
@@ -83,7 +83,7 @@ export function GuidePage() {
         <ChatGptCard />
         <Shot wide file="chatgpt-1-add.png" alt="ChatGPT's Plugins page. Numbered: 1 the Plugins icon in the sidebar, 2 the Add button, 3 Add custom MCP server" />
         <Shot wide file="chatgpt-2-form.png" alt="The Add custom MCP server form filled in: name, Server URL ending in /mcp, Authentication set to OAuth, and the understand box ticked" />
-        <p>After you click <strong>Create as a plugin</strong>, ChatGPT opens voicebrain’s own page to ask for access. Check it says it is from ChatGPT, then tap <strong>Approve</strong>.</p>
+        <p>After you click <strong>Create as a plugin</strong>, ChatGPT opens aution’s own page to ask for access. Check it says it is from ChatGPT, then tap <strong>Approve</strong>.</p>
         <Shot file="approve-chatgpt.png" alt="The Approve access page: ChatGPT wants to read your voice notes and wiki, mark tasks done and write wiki pages, with Deny and Approve buttons" />
       </section>
 
@@ -91,7 +91,7 @@ export function GuidePage() {
         <h2 id="g6">6. Ask ChatGPT</h2>
         <p>Once connected, just talk to ChatGPT about your notes. Try:</p>
         <ul>{questions.map(question => <li key={question}>“{question}”</li>)}</ul>
-        <p><strong>How notes get sorted.</strong> A minute after you record, your note is written down and can be found by its words. Its title, tasks and ideas are filled in in one of two ways, depending on how your server was set up. If the owner added an AI key, it happens by itself a minute later. If not, your assistant (ChatGPT, or a coding agent) does it the next time you use it with voicebrain connected: with the standing instruction from step 5 installed it notices new notes and sorts them by itself, and without it you can ask. Until then a note is called “Voice note” and has no tasks. To do it right away, say: “Sort my new voicebrain notes.”</p>
+        <p><strong>How notes get sorted.</strong> A minute after you record, your note is written down and can be found by its words. Its title, tasks and ideas are filled in in one of two ways, depending on how your server was set up. If the owner added an AI key, it happens by itself a minute later. If not, your assistant (ChatGPT, or a coding agent) does it the next time you use it with aution connected: with the standing instruction from step 5 installed it notices new notes and sorts them by itself, and without it you can ask. Until then a note is called “Voice note” and has no tasks. To do it right away, say: “Sort my new aution notes.”</p>
         <p>Asking is always allowed. When ChatGPT wants to <strong>change</strong> something (rename a note, mark a task done), it asks you first. That is ChatGPT’s own safety step and it cannot be switched off from here. Names it gives your notes show up in this app within about half a minute.</p>
       </section>
 
@@ -99,23 +99,23 @@ export function GuidePage() {
         <h2 id="g7">7. Use it from Claude Code, Cursor, opencode or Codex</h2>
         <p>Any tool that speaks MCP can read your notes. Open your account page (Settings → <strong>Manage account</strong>) and under <strong>Coding agents</strong> press <strong>Create a key</strong>. It shows the key once, with the settings for each tool already filled in. The shapes are:</p>
         <pre className="snippet-block">{`Claude Code:
-claude mcp add --transport http voicebrain ${address} --header "Authorization: Bearer YOUR_KEY"
+claude mcp add --transport http aution ${address} --header "Authorization: Bearer YOUR_KEY"
 
 opencode (opencode.json):
-{ "mcp": { "voicebrain": { "type": "remote", "url": "${address}", "oauth": false, "headers": { "Authorization": "Bearer YOUR_KEY" } } } }
+{ "mcp": { "aution": { "type": "remote", "url": "${address}", "oauth": false, "headers": { "Authorization": "Bearer YOUR_KEY" } } } }
 
 Cursor (~/.cursor/mcp.json):
-{ "mcpServers": { "voicebrain": { "url": "${address}", "headers": { "Authorization": "Bearer YOUR_KEY" } } } }
+{ "mcpServers": { "aution": { "url": "${address}", "headers": { "Authorization": "Bearer YOUR_KEY" } } } }
 
 Codex (~/.codex/config.toml):
-[mcp_servers.voicebrain]
+[mcp_servers.aution]
 url = "${address}"
-bearer_token_env_var = "VOICEBRAIN_KEY"`}</pre>
+bearer_token_env_var = "AUTION_KEY"`}</pre>
         <ul>
           <li>A key is yours alone, can be revoked from the same page, and stops working if you are removed from the server.</li>
           <li>The Cursor and Codex settings are from memory of their documentation, so check them against each tool’s current docs. The Claude Code and opencode ones follow theirs.</li>
-          <li>If Claude Code ignores the key and starts a sign-in instead, use the sign-in: type <kbd>/mcp</kbd> inside Claude Code and choose voicebrain.</li>
-          <li>Paste the standing instruction from step 5 into the tool’s rules file (<kbd>CLAUDE.md</kbd>, <kbd>AGENTS.md</kbd> or Cursor rules) so it checks voicebrain on its own.</li>
+          <li>If Claude Code ignores the key and starts a sign-in instead, use the sign-in: type <kbd>/mcp</kbd> inside Claude Code and choose aution.</li>
+          <li>Paste the standing instruction from step 5 into the tool’s rules file (<kbd>CLAUDE.md</kbd>, <kbd>AGENTS.md</kbd> or Cursor rules) so it checks aution on its own.</li>
         </ul>
       </section>
 
@@ -128,8 +128,8 @@ bearer_token_env_var = "VOICEBRAIN_KEY"`}</pre>
         <h2 id="g9">9. Who can see your notes</h2>
         <ul>
           <li>The recordings and transcripts are stored in <strong>your</strong> Google Drive.</li>
-          <li>The voicebrain server reads them while it works (to transcribe and sort them). Whoever runs that server can, in principle, read them while it does. If that matters to you, run your own server.</li>
-          <li>Your recordings are turned into words by a program running on the voicebrain server, and the audio goes nowhere else. The words are read by whatever sorts your notes: ChatGPT (so OpenAI) when you ask it, or the AI service the server owner chose, if any.</li>
+          <li>The aution server reads them while it works (to transcribe and sort them). Whoever runs that server can, in principle, read them while it does. If that matters to you, run your own server.</li>
+          <li>Your recordings are turned into words by a program running on the aution server, and the audio goes nowhere else. The words are read by whatever sorts your notes: ChatGPT (so OpenAI) when you ask it, or the AI service the server owner chose, if any.</li>
           <li>You can delete any note for good, and disconnect Drive or sign out at any time.</li>
         </ul>
       </section>
@@ -139,11 +139,11 @@ bearer_token_env_var = "VOICEBRAIN_KEY"`}</pre>
         <dl className="faq">
           <dt>“This Google account is not on the list.”</dt><dd>Ask the owner to add your address, then try again.</dd>
           <dt>Notes show “Waiting”.</dt><dd>They are saved on your phone and upload when you are online and signed in. Open Settings to check you are signed in.</dd>
-          <dt>“Google Drive is not connected.”</dt><dd>Open Settings and tap Connect Google Drive. This also happens if you removed voicebrain’s access in your Google account.</dd>
-          <dt>ChatGPT cannot see my notes.</dt><dd>Check voicebrain is listed under Installed on ChatGPT’s Plugins page, and that you signed in with the same Google account as here. Try asking “Using voicebrain, …”.</dd>
-          <dt>My note is called “Voice note” and has no tasks.</dt><dd>It is written down but ChatGPT has not sorted it yet. Open ChatGPT with voicebrain connected and say “Sort my new voicebrain notes.” ChatGPT may ask you to allow saving; that is its own safety step.</dd>
+          <dt>“Google Drive is not connected.”</dt><dd>Open Settings and tap Connect Google Drive. This also happens if you removed aution’s access in your Google account.</dd>
+          <dt>ChatGPT cannot see my notes.</dt><dd>Check aution is listed under Installed on ChatGPT’s Plugins page, and that you signed in with the same Google account as here. Try asking “Using aution, …”.</dd>
+          <dt>My note is called “Voice note” and has no tasks.</dt><dd>It is written down but ChatGPT has not sorted it yet. Open ChatGPT with aution connected and say “Sort my new aution notes.” ChatGPT may ask you to allow saving; that is its own safety step.</dd>
           <dt>Notes stay “Voice note” even though the server sorts automatically.</dt><dd>The AI service the server uses may have reached its usage limit. Nothing is lost: your notes are written down and searchable, and they are sorted by themselves as soon as the limit resets.</dd>
-          <dt>ChatGPT only uses voicebrain when I ask it to.</dt><dd>Add the custom instruction from step 5 (Personalization → Custom instructions). Until then you can always say “Using voicebrain, …”.</dd>
+          <dt>ChatGPT only uses aution when I ask it to.</dt><dd>Add the custom instruction from step 5 (Personalization → Custom instructions). Until then you can always say “Using aution, …”.</dd>
           <dt>ChatGPT does not know about a new feature.</dt><dd>Open the Plugins page and press the refresh button next to Add.</dd>
           <dt>The app looks old.</dt><dd>Close it completely and open it again. It updates itself in the background.</dd>
         </dl>

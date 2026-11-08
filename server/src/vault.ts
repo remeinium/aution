@@ -12,7 +12,7 @@ const yaml = (value: unknown) => JSON.stringify(value)
 
 export const SCHEMA_DOC = `# How this vault works
 
-This vault is written by **voicebrain** from voice notes, and read by an assistant over MCP.
+This vault is written by **aution** from voice notes, and read by an assistant over MCP.
 
 ## Layers
 - \`notes/\` one file per voice note: summary, extracted items with the exact words they came from, marked moments, full transcript. **Generated. Do not edit**: it is rewritten when the note is re-processed.
@@ -272,7 +272,7 @@ export class Vault {
     try {
       await exec('git', ['add', '-A'], { cwd: this.root })
       const changed = await exec('git', ['diff', '--cached', '--quiet'], { cwd: this.root }).then(() => false, () => true)
-      if (changed) await exec('git', ['-c', 'user.name=voicebrain', '-c', 'user.email=voicebrain@localhost', 'commit', '-q', '-m', message], { cwd: this.root })
+      if (changed) await exec('git', ['-c', 'user.name=aution', '-c', 'user.email=aution@localhost', 'commit', '-q', '-m', message], { cwd: this.root })
     } catch (error) {
       console.warn(`git commit failed: ${errorText(error)}`)
     }

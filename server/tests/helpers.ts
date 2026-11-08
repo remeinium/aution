@@ -13,7 +13,7 @@ export const TRANSCRIPT = 'Remind me to call the bank tomorrow. I also had an id
 export const CREATED_AT = '2026-10-30T03:42:00.000Z'
 
 export async function tempDir(): Promise<{ dir: string; clean: () => Promise<void> }> {
-  const dir = await mkdtemp(join(tmpdir(), 'voicebrain-'))
+  const dir = await mkdtemp(join(tmpdir(), 'aution-'))
   return { dir, clean: () => rm(dir, { recursive: true, force: true }) }
 }
 

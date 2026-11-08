@@ -27,7 +27,7 @@ export function uploadMeta(note: Note, settings: Settings) {
     device: settings.deviceName,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     utcOffsetMinutes: -new Date(note.createdAt).getTimezoneOffset(),
-    app: `voicebrain-app/${APP_VERSION}`,
+    app: `aution-app/${APP_VERSION}`,
   }
 }
 

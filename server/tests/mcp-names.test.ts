@@ -37,7 +37,7 @@ afterEach(async () => { await client.close(); await server.stop(); await stt.clo
 
 describe('notes are named for people, not for the database', () => {
   it('shows titles and dates, and keeps ids out of sight', async () => {
-    for (const [tool, args] of [['brief', { topic: 'bank' }], ['search', { query: 'bank' }], ['recent', {}], ['open_loops', {}]] as const) {
+    for (const [tool, args] of [['brief', { topic: 'bank' }], ['search', { query: 'bank' }], ['recent', { days: 365 }], ['open_loops', {}]] as const) {
       const { text } = await call(tool, args)
       expect(text, tool).toContain(`“${DIGEST.title}”`)
       expect(text, tool).not.toMatch(UUID_ANYWHERE)

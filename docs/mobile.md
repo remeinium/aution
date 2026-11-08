@@ -1,4 +1,4 @@
-# jssayso for Android (Tauri 2)
+# aution for Android (Tauri 2)
 
 The native app wraps the same React UI as the website and adds what a browser cannot do: recording with the screen
 off, uploading in the background (also after a reboot), and keeping the device token in the Android Keystore.
@@ -7,7 +7,7 @@ iOS comes later (see the end).
 > **Status: in progress.** Each phase below says what has been checked **on a real phone**. Anything not run on a
 > phone is marked *untested*.
 
-> ⚠️ **The application id `com.remeinium.jss` becomes permanent the moment an APK reaches a real user.** Android
+> ⚠️ **The application id `com.remeinium.aution` becomes permanent the moment an APK reaches a real user.** Android
 > treats a different id as a different app, so changing it later breaks updates for everyone. It is set in
 > `src/brand.ts` and `src-tauri/tauri.conf.json` (`tests/brand.test.ts` fails if they disagree). Confirm it before
 > the first release.
@@ -16,7 +16,7 @@ iOS comes later (see the end).
 
 | What | Where |
 |---|---|
-| Display name `jssayso`, tagline, app id, website `https://jss.remeinium.com` | `src/brand.ts` |
+| Display name `aution`, tagline, app id, website `https://aution.remeinium.com` | `src/brand.ts` |
 | `productName`, `identifier`, window title | `src-tauri/tauri.conf.json` (checked against `brand.ts` by a test) |
 | Page title, description, web manifest name | filled from `brand.ts` at build time (`vite.config.ts`) |
 
@@ -72,24 +72,17 @@ command-line tools and NDK (Android SDK licence).
 
 ## Needs from the server
 
-The other session owns `server/`. Please pass these on:
+Status after the rename to aution (the server changes are on the same branch as this note):
 
-1. **CORS for the app's origin.** Requests the UI makes from inside the app (pairing, rename, delete, account,
-   names) come from origin `https://tauri.localhost`. `ALLOWED_ORIGIN` takes one value (default `*`). If production
-   sets it to the website's origin, the app breaks. Needed: either keep `*` for `/v1`, or accept a comma-separated
-   list and echo the matching `Origin` (with `Vary: Origin`), and document that `https://tauri.localhost` must be
-   in it.
-
-2. **Rename what people see on the server's pages to jssayso.** The approval page (`server/src/pairing.ts`, for
-   example "…your own voicebrain app…"), the sign-out page (`server/src/auth.ts`, "You are signed out of
-   voicebrain…") and the other server-rendered pages still say voicebrain. The owner wants the brand jssayso
-   everywhere a person reads it. Ideally the server reads the name from one setting (an env var such as
-   `BRAND_NAME=jssayso`) so it matches the app's `src/brand.ts`.
-3. **Let someone switch Google accounts from the approval page.** The page reuses the server's own browser session
-   (`vb_session`, 14 days), so a person signed in as account A never reaches Google's account chooser (which
-   `prompt: 'select_account'` would show). Seen on the owner's phone on 2026-11-05: it kept approving as the old
-   account, and signing out of the website did not help (that only drops the website's device token). Needed: show
-   "Signed in as A · Use a different account" on `GET /pair`, which ends the session and restarts sign-in.
+1. **CORS for the app's origin: nothing to do while `ALLOWED_ORIGIN=*`.** Requests from inside the app come from
+   origin `https://tauri.localhost`. The API uses bearer tokens, not cookies, so `*` is safe for `/v1`. If production
+   ever restricts `ALLOWED_ORIGIN`, `https://tauri.localhost` must be allowed (the setting takes one value today, so
+   it would need to become a list).
+2. **Brand on the server's pages: done.** The product has one name, aution, everywhere a person reads it (approval,
+   sign-out and account pages, MCP name, error messages). It is written directly, not read from a setting.
+3. **Switching Google accounts from the approval page: done.** `/pair` shows "Not you? Use a different account" for
+   a signed-in person. It posts to `/pair/switch` (same-origin only), which ends the session and restarts Google
+   sign-in at the account chooser.
 
 ## Build it locally
 
@@ -104,7 +97,7 @@ Filled in on a real phone.
 | Check | Result | Date, phone, Android version |
 |---|---|---|
 | App starts, shows the UI | works: cold start 1.04 s, no console or CSP errors | 2026-11-05, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
-| Microphone permission prompt, then recording works (screen on) | works: system prompt "Allow jssayso to record audio?", 57 s note saved (188 KB); level meter responds (peak 0.06 quiet, 0.26 speaking) | 2026-11-05, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
+| Microphone permission prompt, then recording works (screen on) | works: system prompt "Allow aution to record audio?", 57 s note saved (188 KB); level meter responds (peak 0.06 quiet, 0.26 speaking) | 2026-11-05, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
 | Pairing with one tap, then upload (screen on) | works: approval page opened in the system browser, Google sign-in, note shows "Uploaded" | 2026-11-05, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
 | 5 minute recording with the screen off | **fails with the web recorder** (as expected): with the screen off Android feeds the WebView silence (AudioRecord stats switch from `fine` to `mute`, 12 s muted in a 20 s test). Fixed by the native recorder in phase 2 | 2026-11-05, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
 | Switching to other apps while recording | untested | |
@@ -120,7 +113,7 @@ Filled in on a real phone.
 ### Phase 0: toolchain, app runs, record and upload with the screen on
 
 **Done, checked on a real phone** (Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0, 2026-11-05):
-- The app starts (cold start 1.04 s) and shows the same UI as the website, branded jssayso. No console or CSP errors.
+- The app starts (cold start 1.04 s) and shows the same UI as the website, branded aution. No console or CSP errors.
 - Microphone: Android's own prompt appears on the first Record (wry asks for it); recording works with the screen on;
   a 57 s note was saved on the device and its level meter responds to speech.
 - One-tap pairing with `https://vb.kusaldarshana.com`: the approval page opened in the **system browser**

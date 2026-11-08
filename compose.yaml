@@ -1,14 +1,14 @@
-# voicebrain on your VPS.   cp .env.example .env  →  edit  →  docker compose up -d --build
+# aution on your VPS.   cp .env.example .env  →  edit  →  docker compose up -d --build
 #
 # Written for a machine that already runs other things (Caddy, Postgres, n8n, ...):
 #   - its own project name, network and volumes, so nothing it creates collides with anything else
-#   - the only host port is 127.0.0.1:${VOICEBRAIN_PORT:-18787}; the container still listens on 8787 inside
+#   - the only host port is 127.0.0.1:${AUTION_PORT:-18787}; the container still listens on 8787 inside
 #   - hard CPU and memory limits, so a long transcription can slow itself down but not crash its neighbours
 #     (the VPS has no swap, so a runaway process would otherwise make the kernel kill something else)
-name: voicebrain
+name: aution
 
 services:
-  voicebrain:
+  aution:
     build: ./server
     restart: unless-stopped
     env_file: .env
@@ -18,12 +18,12 @@ services:
     mem_limit: 512m
     # Only the reverse proxy on this machine can reach it. Nothing is exposed to the internet directly.
     ports:
-      - "127.0.0.1:${VOICEBRAIN_PORT:-18787}:8787"
+      - "127.0.0.1:${AUTION_PORT:-18787}:8787"
     volumes:
       - "${DATA_PATH:-./data}:/data"
 
   # Speech to text on this machine (faster-whisper). Audio never leaves the VPS.
-  # voicebrain reaches it at http://stt:8000/v1; it is not published to the host or the internet.
+  # aution reaches it at http://stt:8000/v1; it is not published to the host or the internet.
   # It gets only the settings below, never the rest of .env (no API keys).
   stt:
     build: ./whisper

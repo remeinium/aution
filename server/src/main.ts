@@ -56,7 +56,7 @@ async function main() {
   await app.start()
   const port = await app.listen()
   const on = (label: string, enabled: boolean, hint: string) => console.log(`  ${enabled ? 'on ' : 'OFF'}  ${label}${enabled ? '' : `  (${hint})`}`)
-  console.log(`voicebrain listening on :${port}, data in ${config.dataDir}`)
+  console.log(`aution listening on :${port}, data in ${config.dataDir}`)
   on('upload from the recorder app', true, '')
   on('transcription', config.stt !== null, 'set STT_BASE_URL')
   console.log(config.llm ? `  on   sorting notes on this server: ${config.llm.provider === 'cli' ? `the command ${config.llm.command?.[0]}` : config.llm.provider === 'anthropic' ? 'Anthropic' : 'an OpenAI-compatible model'} (${config.llm.model}). ChatGPT or any MCP assistant can sort too` : '  on   sorting notes by an assistant over MCP (ChatGPT, Claude Code...). Set LLM_PROVIDER to sort on this server instead')

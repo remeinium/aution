@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs'
 import { readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Config } from '../src/config.ts'
 import { CREATED_AT, DIGEST, NOTE_ID, TRANSCRIPT, fakeLlm, fakeStt, run, tempDir, testConfig, upload, waitFor, type Fake, type Running } from './helpers.ts'
 
@@ -245,5 +245,21 @@ describe('what the recorder app sees', () => {
     expect(await again.json()).toMatchObject({ ok: true, duplicate: true })
     expect(CREATED_AT).toBeTruthy()
     expect(DIGEST.title).toBeTruthy()
+  })
+})
+
+describe('one note failing does not hold up the others', () => {
+  it('still works through the rest when reading one note throws', async () => {
+    const SECOND = '9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d' // sorts after NOTE_ID, so it is reached only if the pass carries on
+    server = await run(withProviders())
+    const { store } = server.app.brain
+    const state = store.state.bind(store)
+    vi.spyOn(store, 'state').mockImplementation(id => (id === NOTE_ID ? Promise.reject(new Error('Drive timed out')) : state(id)))
+    vi.spyOn(console, 'log').mockImplementation(() => undefined)
+    try {
+      expect((await upload(server.base)).status).toBe(201)
+      expect((await upload(server.base, { id: SECOND })).status).toBe(201)
+      await waitFor(digested(SECOND), 'the second note to be digested although the first one keeps failing')
+    } finally { vi.restoreAllMocks() }
   })
 })
