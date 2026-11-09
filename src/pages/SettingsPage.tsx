@@ -6,6 +6,7 @@ import { isConfigured, isPrivateAddress, normalizeEndpoint } from '../lib/endpoi
 import { formatBytes } from '../lib/format'
 import { KEEP_NEWEST, pickNewestAudio, removeNewestAudio, retryFailed } from '../lib/notes'
 import { kickUploads, pingServer } from '../lib/uploader'
+import { APK_URL } from '../lib/defaults'
 import { ChatGptCard } from '../components/ChatGptCard'
 import { ConnectCard } from '../components/ConnectCard'
 import { AutostartNotice } from '../native/AutostartNotice'
@@ -197,6 +198,12 @@ export function SettingsPage({ installPrompt }: { installPrompt: InstallEvent | 
             ? <><p className="hint">Add {BRAND.name} to your home screen to open it like an app, offline, with a one-tap Record shortcut.</p>
               <div className="row-actions"><button type="button" className="primary-button" onClick={() => void installPrompt.prompt()}>Install app</button></div></>
             : <p className="hint">In your browser menu choose “Install app” or “Add to Home screen”. On iPhone use Share, then Add to Home Screen.</p>}
+      </section>}
+
+      {!isNativeApp() && APK_URL && <section className="settings-section" aria-labelledby="android-title">
+        <h2 id="android-title">Android app</h2>
+        <p className="hint">Keeps recording with the screen off and uploads in the background. Open this page on the Android phone, download, then open the file to install.</p>
+        <div className="row-actions"><a className="secondary-button" href={APK_URL} rel="noopener">Download the Android app</a></div>
       </section>}
 
       <section className="settings-section" aria-labelledby="help-title">

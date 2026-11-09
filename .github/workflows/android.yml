@@ -1,0 +1,66 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Builds the signed Android APK for a version tag (v0.3.0, ...) and attaches it to that GitHub release as aution.apk,
+# the file the website's "Download the Android app" link points to (releases/latest/download/aution.apk).
+#
+# Needs two repository secrets (Settings → Secrets and variables → Actions):
+#   ANDROID_KEYSTORE_BASE64    base64 of the release keystore   (base64 -w0 ~/.config/aution/release.jks)
+#   ANDROID_KEYSTORE_PASSWORD  its password (the key uses the same one)
+# Run it by hand ("Run workflow") to get the APK as a build artifact without making a release.
+name: Android release
+on:
+  push: { tags: ['v*'] }
+  workflow_dispatch:
+permissions: { contents: write }
+concurrency: { group: android-${{ github.ref }}, cancel-in-progress: false }
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      NDK_VERSION: 30.0.16248370
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - uses: dtolnay/rust-toolchain@stable
+        with: { targets: 'aarch64-linux-android,armv7-linux-androideabi' }
+      - uses: Swatinem/rust-cache@v2
+        with: { workspaces: src-tauri }
+      - name: Android SDK platform, build tools and NDK
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-37" "build-tools;37.0.0" "ndk;$NDK_VERSION" > /dev/null
+          echo "NDK_HOME=$ANDROID_HOME/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
+      - name: The tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          version="v$(node -p "require('./package.json').version")"
+          [ "$version" = "$GITHUB_REF_NAME" ] || { echo "::error::Tag $GITHUB_REF_NAME but package.json says $version"; exit 1; }
+      - run: npm ci
+      - run: npm test
+      - name: Signing key (to a temporary file, never printed)
+        env: { KEYSTORE_BASE64: '${{ secrets.ANDROID_KEYSTORE_BASE64 }}' }
+        run: |
+          [ -n "$KEYSTORE_BASE64" ] || { echo "::error::The ANDROID_KEYSTORE_BASE64 secret is missing"; exit 1; }
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "AUTION_KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+      - name: Build the signed APK
+        env:
+          AUTION_KEYSTORE_PASSWORD: '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}'
+          AUTION_KEY_ALIAS: aution
+        run: npm run android:release
+      - name: Attach to the release
+        if: startsWith(github.ref, 'refs/tags/')
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "aution $GITHUB_REF_NAME" --notes "Android app: open this page on the phone, download aution.apk, then open the file to install."
+          gh release upload "$GITHUB_REF_NAME" artifacts/android/aution.apk artifacts/android/aution-*.apk --clobber
+      - name: Keep the APK as a build artifact
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with: { name: aution-apk, path: artifacts/android/aution-*.apk }
+      - name: Remove the signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks"

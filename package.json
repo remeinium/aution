@@ -14,7 +14,8 @@
     "tauri": "tauri",
     "preview": "vite preview",
     "server:install": "npm --prefix server install",
-    "server:test": "npm --prefix server test"
+    "server:test": "npm --prefix server test",
+    "android:release": "bash src-tauri/scripts/release-apk.sh"
   },
   "dependencies": {
     "@fontsource-variable/red-hat-display": "^5.3.0",

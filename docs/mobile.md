@@ -94,9 +94,43 @@ Status after the rename to aution (the server changes are on the same branch as 
 
 ## Build it locally
 
-*To be written in phase 5.* The toolchain used here: JDK 21 (Corretto) in `~/.local/jdk`, Android SDK in
-`~/Android/Sdk` (platform-tools, latest platform and build-tools, NDK), Rust targets
-`aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android`.
+Toolchain (what this was built with): JDK 21 (Corretto, in `~/.local/jdk`), Android SDK in `~/Android/Sdk` with
+platform 37, build-tools 37.0.0 and NDK 30.0.16248370, Rust with the targets `aarch64-linux-android` and
+`armv7-linux-androideabi`, Node 24. Set `JAVA_HOME`, `ANDROID_HOME` and `NDK_HOME` (the NDK folder).
+
+- **Debug APK** for testing (277 MB, debug symbols, id `com.remeinium.aution.debug`, so it installs next to the real
+  app): `npx tauri android build --debug --apk --target aarch64`, then
+  `adb install -r src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk`.
+- **Release APK** (signed, 12.7 MB for 0.2.0): `npm run android:release` writes `artifacts/android/aution-<version>.apk`
+  and `artifacts/android/aution.apk`, and prints the signing certificate's SHA-256 so you can check it.
+
+## Release
+
+**Signing.** The key is `~/.config/aution/release.jks` (alias `aution`, RSA 4096, valid until 2054), its password in
+`~/.config/aution/release.properties`, both readable only by the owner and **outside the repository**. Certificate
+SHA-256: `42:F2:95:BB:AE:D4:04:FE:37:68:41:FE:77:61:B4:55:20:B3:32:0C:F4:B1:2D:C3:8B:D6:37:EC:10:B6:C4:F0`.
+**Back both files up somewhere safe** (a password manager, an encrypted drive): every future update must be signed
+with this key, or installed phones refuse it and people must uninstall (losing unsent notes) to get the new version.
+
+Gradle reads the key from the environment (`src-tauri/gen/android/app/build.gradle.kts`), never from the repo:
+`AUTION_SIGNING_PROPERTIES=/path/to/release.properties`, or `AUTION_KEYSTORE_FILE` + `AUTION_KEYSTORE_PASSWORD`
+(+ `AUTION_KEY_ALIAS`, `AUTION_KEY_PASSWORD`). The release script refuses to build without a key, so an unsigned APK
+is never published by mistake.
+
+**versionCode.** Tauri derives it from the version in `package.json`: `major × 1,000,000 + minor × 1,000 + patch`
+(0.2.0 → 2000, 1.4.12 → 1004012). Android only installs an update with a higher versionCode, so every release needs a
+higher version; never reuse or lower one. Patch and minor stay below 1000.
+
+**Publishing.** Raise `version` in `package.json`, commit, then tag and push: `git tag v0.3.0 && git push origin v0.3.0`.
+`.github/workflows/android.yml` checks that the tag matches `package.json`, runs the unit tests, builds the signed APK
+and attaches `aution.apk` (plus `aution-<version>.apk`) to the GitHub release of that tag. It needs the repository
+secrets `ANDROID_KEYSTORE_BASE64` and `ANDROID_KEYSTORE_PASSWORD`. "Run workflow" by hand builds the APK as an artifact
+without a release.
+
+**Download link.** The website's Settings shows "Download the Android app" (hidden inside the app), pointing to
+`https://github.com/remeinium/aution/releases/latest/download/aution.apk`, which is always the newest release. Set
+`VITE_APK_URL` when building the website to point elsewhere, or to an empty value to hide it. Installing needs
+"Install unknown apps" allowed for the browser or Files app; Android asks the first time.
 
 ## Checklist on a real phone
 
@@ -104,6 +138,7 @@ Filled in on a real phone.
 
 | Check | Result | Date, phone, Android version |
 |---|---|---|
+| Signed release APK: install from Files, open, connect, record, upload | works (0.2.0, 12.7 MB) | 2026-11-10, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
 | App starts, shows the UI | works: cold start 1.04 s, no console or CSP errors | 2026-11-05, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
 | Microphone permission prompt, then recording works (screen on) | works: system prompt "Allow aution to record audio?", 57 s note saved (188 KB); level meter responds (peak 0.06 quiet, 0.26 speaking) | 2026-11-05, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
 | Pairing with one tap, then upload (screen on) | works: approval page opened in the system browser, Google sign-in, note shows "Uploaded" | 2026-11-05, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
@@ -232,6 +267,28 @@ allows). Its exported components are protected by system-only permissions (`BIND
 - Renames and tag changes after the upload are still sent by the page (`flushEdits`), so only while the app is open.
 - Turning "Upload automatically" off does not stop notes already handed to the outbox.
 - Wi-Fi only, reboot, a 401 after signing out on the server, and a large file: *untested on the phone*.
+
+### Phase 4: pairing and the token in the Keystore
+
+Mostly built in earlier phases, so this phase added no code:
+- One-tap pairing through the system browser (phase 0): approval page in the browser, the app polls and connects.
+  Checked again with the **release** APK on 2026-11-10: installed fresh, connected, recorded, uploaded.
+- The token lives in the Android Keystore (phase 3), moved out of IndexedDB on first start.
+- "Sign out of this device" calls `DELETE /v1/devices/:id` and clears the token; inside the app that removes it from
+  the Keystore (`writeToken` → `SecureStore.remove`). *Sign-out on the phone not separately checked.*
+
+### Phase 5: release
+
+**Done**: signing key outside the repo, Gradle signing from the environment, `npm run android:release`, the versionCode
+scheme, `.github/workflows/android.yml`, the download link in the website's Settings, and the build and release
+sections above. Release builds use a size-tuned Rust profile (`lto`, `opt-level = "s"`, `strip`) and R8, and carry
+arm64 + armv7 only.
+
+**Checked on a real phone** (2026-11-10, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0): the signed release APK (0.2.0, 12.7 MB) installed from the Files app next to the
+debug build, opened, connected through the system browser, recorded with the native recorder and uploaded.
+
+**Not checked**: the GitHub workflow's first run (see the release of the first tag); the download link on the live
+website (it appears once the website is redeployed); installing on an armv7 phone.
 
 ### Phase 6: iOS
 

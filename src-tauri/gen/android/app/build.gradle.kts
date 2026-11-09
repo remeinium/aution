@@ -7,6 +7,29 @@ plugins {
     id("rust")
 }
 
+/**
+ * Release signing, from OUTSIDE the repository (never commit a keystore, never print it). Either
+ *   AUTION_SIGNING_PROPERTIES=/path/to/release.properties   (storeFile, storePassword, keyAlias, keyPassword)
+ * or the four values directly:
+ *   AUTION_KEYSTORE_FILE, AUTION_KEYSTORE_PASSWORD, AUTION_KEY_ALIAS, AUTION_KEY_PASSWORD   (what CI uses)
+ * With neither, the release APK is built unsigned.
+ */
+val releaseSigning: Map<String, String>? = run {
+    val path = System.getenv("AUTION_SIGNING_PROPERTIES")
+    if (!path.isNullOrBlank()) {
+        val props = Properties().apply { file(path).inputStream().use { load(it) } }
+        return@run listOf("storeFile", "storePassword", "keyAlias", "keyPassword").associateWith { props.getProperty(it) ?: error("$it missing in AUTION_SIGNING_PROPERTIES") }
+    }
+    val storeFile = System.getenv("AUTION_KEYSTORE_FILE")
+    if (storeFile.isNullOrBlank()) return@run null
+    mapOf(
+        "storeFile" to storeFile,
+        "storePassword" to (System.getenv("AUTION_KEYSTORE_PASSWORD") ?: error("AUTION_KEYSTORE_PASSWORD is not set")),
+        "keyAlias" to (System.getenv("AUTION_KEY_ALIAS") ?: "aution"),
+        "keyPassword" to (System.getenv("AUTION_KEY_PASSWORD") ?: System.getenv("AUTION_KEYSTORE_PASSWORD")!!),
+    )
+}
+
 val tauriProperties = Properties().apply {
     val propFile = file("tauri.properties")
     if (propFile.exists()) {
@@ -24,6 +47,16 @@ android {
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
     }
+    signingConfigs {
+        if (releaseSigning != null) {
+            create("release") {
+                storeFile = file(releaseSigning.getValue("storeFile"))
+                storePassword = releaseSigning.getValue("storePassword")
+                keyAlias = releaseSigning.getValue("keyAlias")
+                keyPassword = releaseSigning.getValue("keyPassword")
+            }
+        }
+    }
     buildTypes {
         getByName("debug") {
             applicationIdSuffix = ".debug"
@@ -38,6 +71,7 @@ android {
             }
         }
         getByName("release") {
+            if (releaseSigning != null) signingConfig = signingConfigs.getByName("release")
             optimization {
                enable = true
             }
