@@ -30,7 +30,7 @@ jobs:
         with: { workspaces: src-tauri }
       - name: Android SDK platform, build tools and NDK
         run: |
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-37" "build-tools;37.0.0" "ndk;$NDK_VERSION" > /dev/null
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-37.0" "build-tools;37.0.0" "ndk;$NDK_VERSION" > /dev/null
           echo "NDK_HOME=$ANDROID_HOME/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
       - name: The tag matches package.json
         if: startsWith(github.ref, 'refs/tags/')
