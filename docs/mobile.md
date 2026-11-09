@@ -287,8 +287,12 @@ arm64 + armv7 only.
 **Checked on a real phone** (2026-11-10, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0): the signed release APK (0.2.0, 12.7 MB) installed from the Files app next to the
 debug build, opened, connected through the system browser, recorded with the native recorder and uploaded.
 
-**Not checked**: the GitHub workflow's first run (see the release of the first tag); the download link on the live
-website (it appears once the website is redeployed); installing on an armv7 phone.
+**Published**: tag `v0.2.0` → the workflow built the APK on GitHub (12.7 MB) and attached it to
+https://github.com/remeinium/aution/releases/tag/v0.2.0. Downloaded through the website's link
+(`releases/latest/download/aution.apk`): the signature is the release key above, so it updates the APK built locally.
+
+**Not checked**: the download link on the live website (it appears once the website is redeployed); installing on an
+armv7 phone.
 
 ### Phase 6: iOS
 
