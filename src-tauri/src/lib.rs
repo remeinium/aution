@@ -4,6 +4,8 @@ pub fn run() {
     tauri::Builder::default()
         // Opens the server's approval and account pages in the system browser (https only, see capabilities/).
         .plugin(tauri_plugin_opener::init())
+        // Records with the screen off: a microphone foreground service on Android (see plugins/aution-recorder).
+        .plugin(tauri_plugin_aution_recorder::init())
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(

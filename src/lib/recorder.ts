@@ -5,7 +5,9 @@ import { pickMime } from './mime'
 import { newNote } from './notes'
 import { kickUploads } from './uploader'
 import { ScreenLock } from './wakelock'
+import { isAndroidApp } from '../native/platform'
 import { choose } from '../native/runtime'
+import { NativeRecorder } from '../native/tauri-recorder'
 import type { Recorder } from '../native/types'
 import type { Note, Settings } from './types'
 
@@ -239,4 +241,8 @@ export class VoiceRecorder implements Recorder {
 }
 
 /** The recorder the UI uses: the browser's, or the native one inside the app (see src/native). */
-export const recorder: Recorder = choose({ web: () => new VoiceRecorder() })
+export const recorder: Recorder = choose<Recorder>({
+  web: () => new VoiceRecorder(),
+  // Android: a microphone foreground service that keeps recording with the screen off. Desktop keeps the web recorder.
+  ...(isAndroidApp() ? { tauri: () => new NativeRecorder(LEVEL_BARS) } : {}),
+})

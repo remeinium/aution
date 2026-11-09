@@ -56,7 +56,8 @@ Differences inside the app that need no UI change:
 | Service workers do not work in the app | wry serves the app via `shouldInterceptRequest`, no `ServiceWorkerController` | True in practice; the app does not register one |
 | Android pauses a backgrounded WebView | Tauri 2.12 config schema, `backgroundThrottling`: "Linux / Windows / Android: Unsupported" | True: the WebView cannot opt out |
 | WebView microphone stops when the screen turns off | Phone test: screen off for 20 s while recording, read `AudioRecordImpl` stats in logcat | True, and worse than stopping: the recording carries on but Android hands it silence (`[mute]`), so the note looks fine and is empty for that stretch |
-| Android 14 needs a `microphone` foreground service | *to be checked in phase 2* | |
+| Android 14 needs a `microphone` foreground service | Android docs (foreground service types, Android 14) and the merged manifest of the APK (`aapt2 dump xmltree`) | True: `RecorderService` is declared with `foregroundServiceType=microphone` (0x80) and the app holds `FOREGROUND_SERVICE_MICROPHONE`; Android logged `Background started FGS: Allowed` when the recording started |
+| A Tauri plugin's events need a permission | Phone test: `addPluginListener` failed with `aution-recorder.registerListener not allowed` | True: `register_listener` and `remove_listener` must be in the plugin's `COMMANDS` and its default permission, or the UI never hears the plugin's events |
 
 ## Libraries added, and their licences
 
@@ -66,6 +67,9 @@ All must be compatible with AGPL-3.0.
 |---|---|---|
 | `@tauri-apps/api` 2.12 (npm) | calling native code from the UI | Apache-2.0 OR MIT |
 | `@tauri-apps/plugin-opener` 2.7 (npm) + `tauri-plugin-opener` 2.7 (crate) | opening pages in the system browser | Apache-2.0 OR MIT |
+| `tauri-plugin-aution-recorder` (this repo, `src-tauri/plugins/aution-recorder`) | the native recorder | AGPL-3.0-only (ours) |
+| `serde` 1, `thiserror` 2 (crates) | the recorder plugin's Rust side | MIT OR Apache-2.0 |
+| `androidx.core:core-ktx` 1.17, `androidx.appcompat:appcompat` 1.7 | notifications, foreground service helpers | Apache-2.0 |
 
 Build tools (not shipped in the APK): Amazon Corretto 21 (GPLv2 with Classpath Exception), Android SDK
 command-line tools and NDK (Android SDK licence).
@@ -99,12 +103,15 @@ Filled in on a real phone.
 | App starts, shows the UI | works: cold start 1.04 s, no console or CSP errors | 2026-11-05, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
 | Microphone permission prompt, then recording works (screen on) | works: system prompt "Allow aution to record audio?", 57 s note saved (188 KB); level meter responds (peak 0.06 quiet, 0.26 speaking) | 2026-11-05, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
 | Pairing with one tap, then upload (screen on) | works: approval page opened in the system browser, Google sign-in, note shows "Uploaded" | 2026-11-05, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
+| Screen off while recording (native recorder) | works: 81 s note with the screen off from 0:16 to 1:17; loudness of the audio itself stays at -22 to -28 dB RMS throughout (silence would be below -60 dB). 5 minutes not run yet | 2026-11-10, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
 | 5 minute recording with the screen off | **fails with the web recorder** (as expected): with the screen off Android feeds the WebView silence (AudioRecord stats switch from `fine` to `mute`, 12 s muted in a 20 s test). Fixed by the native recorder in phase 2 | 2026-11-05, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
-| Switching to other apps while recording | untested | |
+| Switching to other apps while recording | works (owner's test): recording carried on behind another app and was stopped from the notification; the note appeared when aution was opened | 2026-11-10, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
 | Incoming phone call while recording | untested | |
 | Airplane mode, then back online: queued notes upload | untested | |
 | Reboot with a note still queued: it uploads | untested | |
-| App killed mid-recording: recording rebuilt on next start | untested | |
+| App killed mid-recording: recording rebuilt on next start | works: swiped away after 37 s (HyperOS kills the process even with a foreground service); on reopening the 37 s note was there, marked recovered, and uploaded | 2026-11-10, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
+| Pause / Resume from the notification | works: the app's screen followed; a 22.8 s recording with a pause gave a 17.9 s note | 2026-11-10, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
+| Waveform with the native recorder | works (after the listener permission fix) | 2026-11-10, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
 | Low battery | untested | |
 | 2 hour recording | untested | |
 
@@ -141,6 +148,42 @@ links to the system browser; the token split for the secure store. The web app i
 `npm run test:e2e` passes 22/22, 77 unit tests pass. Inside the app every part still uses the web code (the native
 ones come in phases 2 to 4). On the phone (2026-11-05) the app ran through this layer: the web recorder and uploader
 under `choose()`, and external links through the opener plugin, all as above.
+
+### Phase 2: native recorder
+
+**Done, checked on a real phone** (2026-11-10, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0):
+- On Android, Record now runs in a native **microphone foreground service** (`src-tauri/plugins/aution-recorder`),
+  not in the WebView. A silent notification ("Recording", running clock, **Pause/Resume** and **Stop**) stays in
+  the notification drawer; Android asked for the notification permission on the first Record.
+- **Screen off works**: 61 s of screen-off speech recorded at normal loudness (the WebView recorder got silence).
+- **Behind other apps** and **Stop from the notification** work; the note is added when aution is next opened.
+- **Killed mid-recording** (swiped away): the audio up to that moment comes back as a *recovered* note and uploads.
+- **Pause/Resume** from the notification; the app follows. The waveform follows the native level.
+- Format: **Ogg/Opus 48 kHz mono** on Android 10+ (about 5 KB/s at the default bitrate), AAC (ADTS) below Android 10
+  (*untested*). Both stay playable when cut off mid-write, which is what makes recovery work.
+- **Battery**: % at start and stop is stored with the note and shown in the Library ("battery 75% → 75%"). Since
+  2026-11-10 the per-second save also stores the latest reading, so a recovered note gets an end value too
+  (*untested on the phone*).
+- The note goes into the same library and uploader as before: the audio is copied into IndexedDB first, the note
+  second, and the native files are deleted only after both are saved.
+
+**How it fits together**: `src/native/tauri-recorder.ts` (UI side, same `Recorder` interface as the web recorder)
+→ Tauri IPC → `RecorderPlugin.kt` (commands and events) → `RecorderService.kt` (MediaRecorder, notification, wake
+lock) → `filesDir/recordings/<id>/audio.ogg` + `meta.json` (rewritten every second). The audio bytes come back
+through a Rust command (`read_recording`) as one binary response.
+
+**Battery numbers**: the short tests above used under 1% (75% → 75%). A 2-hour measurement is still to do.
+
+**Limitations and untested**:
+- **HyperOS kills the app when it is swiped away**, recording included (logged as `handleSwipeKill`); stock Android
+  keeps a foreground service running. What is recorded up to then is kept. To avoid it on Xiaomi: lock aution in the
+  recent-apps screen, or set Battery saver to "No restrictions" for it. Worth a line in the user guide.
+- Incoming phone call: the service watches for the system silencing the microphone and shows a warning. *Untested*.
+- Not applied natively yet: the microphone choice, and the noise suppression / echo / auto-gain settings (the phone's
+  standard `MIC` source is used, with whatever processing the phone applies to it). Bluetooth headset microphones are not routed
+  (*untested*: the phone's own microphone is used).
+- 2-hour recording, low battery and reboot during a recording: *untested*.
+- The web recorder is still used in the browser and as the fallback if the plugin is missing.
 
 ### Phase 6: iOS
 

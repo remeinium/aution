@@ -1,0 +1,5 @@
+"$schema" = "schemas/schema.json"
+
+[default]
+description = "Everything the app's own pages need to record: start, pause, resume, mark and stop a recording, and collect finished ones, and hear its events (level, warnings, finished)."
+permissions = ["allow-start", "allow-pause", "allow-resume", "allow-mark", "allow-stop", "allow-status", "allow-finished", "allow-discard", "allow-read-recording", "allow-register-listener", "allow-remove-listener"]

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Bookmark, ChevronDown, Download, ExternalLink, RotateCw, Trash2, Upload } from 'lucide-react'
 import { getAudio } from '../lib/db'
 import { clockTime, defaultTitle, formatBytes, formatClock, formatDuration, parseTags } from '../lib/format'
+import { batteryLabel } from '../native/recording'
 import { deleteEverywhere, downloadNote, renameNote, retryNote, setNoteTags } from '../lib/notes'
 import { isConfigured } from '../lib/endpoint'
 import { errorMessage } from '../lib/errors'
@@ -70,7 +71,7 @@ export function NoteRow({ note, now, onDelete }: { note: Note; now: number; onDe
     <button type="button" className="note-summary" aria-expanded={open} aria-controls={panel} onClick={() => setOpen(value => !value)}>
       <span className="note-main">
         <span className="note-title">{heading}</span>
-        <span className="note-meta">{clockTime(note.createdAt)} · {formatDuration(note.durationMs)} · {formatBytes(note.size)}{note.recovered ? ' · recovered' : ''}</span>
+        <span className="note-meta">{clockTime(note.createdAt)} · {formatDuration(note.durationMs)} · {formatBytes(note.size)}{note.recovered ? ' · recovered' : ''}{batteryLabel(note) ? ` · ${batteryLabel(note)}` : ''}</span>
         <StatusLabel view={view} />
       </span>
       <ChevronDown size={16} aria-hidden="true" className="note-chevron" />
