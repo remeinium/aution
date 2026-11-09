@@ -6,6 +6,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         // Records with the screen off: a microphone foreground service on Android (see plugins/aution-recorder).
         .plugin(tauri_plugin_aution_recorder::init())
+        // Uploads in the background, also after a reboot, and keeps the token in the Keystore (see plugins/aution-uploader).
+        .plugin(tauri_plugin_aution_uploader::init())
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(

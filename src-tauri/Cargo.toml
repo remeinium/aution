@@ -23,3 +23,5 @@ tauri-plugin-log = "2"
 tauri-plugin-opener = "2"
 # The native recorder (Kotlin foreground service). See plugins/aution-recorder.
 tauri-plugin-aution-recorder = { path = "plugins/aution-recorder" }
+# The native uploader (WorkManager) and the Keystore token store. See plugins/aution-uploader.
+tauri-plugin-aution-uploader = { path = "plugins/aution-uploader" }

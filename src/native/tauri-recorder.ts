@@ -171,6 +171,8 @@ export class NativeRecorder implements Recorder {
     await saveAudio(recording.id, blob)
     const note = noteFromRecording(recording, blob.size)
     await putNote(note)
+    // The uploader takes the file itself (a move, no copy through the page); without it the copy in IndexedDB is used.
+    await invoke('plugin:aution-uploader|adopt', { id: recording.id }).catch(() => undefined)
     await call('discard', { id: recording.id })
     return note
   }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { BRAND } from '../brand'
-import { isNativeApp } from '../native/platform'
+import { isAndroidApp, isNativeApp } from '../native/platform'
 import { useNotes, useSettings, useToast } from '../lib/hooks'
 import { isConfigured, isPrivateAddress, normalizeEndpoint } from '../lib/endpoint'
 import { formatBytes } from '../lib/format'
@@ -8,6 +8,7 @@ import { KEEP_NEWEST, pickNewestAudio, removeNewestAudio, retryFailed } from '..
 import { kickUploads, pingServer } from '../lib/uploader'
 import { ChatGptCard } from '../components/ChatGptCard'
 import { ConnectCard } from '../components/ConnectCard'
+import { AutostartNotice } from '../native/AutostartNotice'
 import type { Settings } from '../lib/types'
 
 interface InstallEvent extends Event { prompt(): Promise<void>; userChoice: Promise<{ outcome: string }> }
@@ -102,7 +103,9 @@ export function SettingsPage({ installPrompt }: { installPrompt: InstallEvent | 
 
       <section className="settings-section" aria-labelledby="upload-title">
         <h2 id="upload-title">Uploads</h2>
+        <AutostartNotice />
         <Toggle label="Upload automatically" hint="Starts the moment a recording is saved, and again whenever the connection returns." checked={settings.autoUpload} onChange={value => { set({ autoUpload: value }); if (value) kickUploads({ ignoreBackoff: true }) }} />
+        {isAndroidApp() && <Toggle label="Wi-Fi only" hint="Waiting notes are sent on Wi-Fi, never over mobile data." checked={settings.wifiOnly} onChange={value => { set({ wifiOnly: value }); kickUploads({ ignoreBackoff: true }) }} />}
         <label className="field">
           <span className="field-label">Keep audio on this device after upload</span>
           <select value={settings.keepAfterUpload} onChange={event => set({ keepAfterUpload: Number(event.target.value) })}>

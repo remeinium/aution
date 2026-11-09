@@ -1,0 +1,15 @@
+[package]
+name = "tauri-plugin-aution-uploader"
+version = "0.1.0"
+authors = ["Kusal Darshana"]
+description = "aution's native uploader: WorkManager sends waiting notes in the background, also after a reboot"
+license = "AGPL-3.0-only"
+edition = "2024"
+rust-version = "1.90"
+links = "tauri-plugin-aution-uploader"
+
+[dependencies]
+tauri = { version = "2.12.5" }
+
+[build-dependencies]
+tauri-plugin = { version = "2.7.2", features = ["build"] }

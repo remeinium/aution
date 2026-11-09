@@ -15,6 +15,7 @@
         }
       ]
     },
-    "aution-recorder:default"
+    "aution-recorder:default",
+    "aution-uploader:default"
   ]
 }

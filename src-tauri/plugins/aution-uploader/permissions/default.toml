@@ -1,0 +1,5 @@
+"$schema" = "schemas/schema.json"
+
+[default]
+description = "What the app's own pages need for background uploads: hand notes to the native outbox, read their state, and keep the device token in the Android Keystore."
+permissions = ["allow-stage", "allow-adopt", "allow-enqueue", "allow-schedule", "allow-uploads", "allow-forget", "allow-secret", "allow-background", "allow-register-listener", "allow-remove-listener"]

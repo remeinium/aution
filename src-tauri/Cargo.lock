@@ -234,6 +234,7 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-plugin-aution-recorder",
+ "tauri-plugin-aution-uploader",
  "tauri-plugin-log",
  "tauri-plugin-opener",
 ]
@@ -3541,6 +3542,14 @@ dependencies = [
  "tauri",
  "tauri-plugin",
  "thiserror 2.0.21",
+]
+
+[[package]]
+name = "tauri-plugin-aution-uploader"
+version = "0.1.0"
+dependencies = [
+ "tauri",
+ "tauri-plugin",
 ]
 
 [[package]]

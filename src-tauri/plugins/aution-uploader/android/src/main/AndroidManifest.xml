@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: AGPL-3.0-only -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- WorkManager adds what it needs itself (network state for "connected" / "Wi-Fi only", boot completed to
+         reschedule after a restart, wake lock while a worker runs). -->
+</manifest>

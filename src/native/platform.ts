@@ -10,7 +10,7 @@ export function isNativeApp(): boolean {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 }
 
-/** True inside the Android app, where the native recorder (and later the native uploader) exist. */
+/** True inside the Android app, where the native recorder, uploader and Keystore exist. */
 export function isAndroidApp(): boolean {
   return isNativeApp() && typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent)
 }

@@ -57,6 +57,8 @@ Differences inside the app that need no UI change:
 | Android pauses a backgrounded WebView | Tauri 2.12 config schema, `backgroundThrottling`: "Linux / Windows / Android: Unsupported" | True: the WebView cannot opt out |
 | WebView microphone stops when the screen turns off | Phone test: screen off for 20 s while recording, read `AudioRecordImpl` stats in logcat | True, and worse than stopping: the recording carries on but Android hands it silence (`[mute]`), so the note looks fine and is empty for that stretch |
 | Android 14 needs a `microphone` foreground service | Android docs (foreground service types, Android 14) and the merged manifest of the APK (`aapt2 dump xmltree`) | True: `RecorderService` is declared with `foregroundServiceType=microphone` (0x80) and the app holds `FOREGROUND_SERVICE_MICROPHONE`; Android logged `Background started FGS: Allowed` when the recording started |
+| Raw bytes can be sent from the page to native code (`invoke(cmd, Uint8Array)`) | Phone test, and Tauri 2.12 `scripts/ipc-protocol.js`: `canUseCustomProtocol = osName !== 'android'` | False on Android: the IPC from the page is `postMessage` with JSON text, so a raw body arrives as JSON, not bytes. Audio goes to the outbox by moving the native recording's file, or in base64 pieces of 256 KB. (Native → page binary *responses* do work: `read_recording`.) |
+| A closed app's WorkManager job runs when the network returns | Phone test with the app swiped away | Not on Xiaomi with Autostart off: the job was due, and HyperOS refused to start the app (`Unable to launch app … process is bad`, app-op `MIUIOP(10008): ignore`). With Autostart on, Android started the app in the background and the job uploaded |
 | A Tauri plugin's events need a permission | Phone test: `addPluginListener` failed with `aution-recorder.registerListener not allowed` | True: `register_listener` and `remove_listener` must be in the plugin's `COMMANDS` and its default permission, or the UI never hears the plugin's events |
 
 ## Libraries added, and their licences
@@ -70,6 +72,8 @@ All must be compatible with AGPL-3.0.
 | `tauri-plugin-aution-recorder` (this repo, `src-tauri/plugins/aution-recorder`) | the native recorder | AGPL-3.0-only (ours) |
 | `serde` 1, `thiserror` 2 (crates) | the recorder plugin's Rust side | MIT OR Apache-2.0 |
 | `androidx.core:core-ktx` 1.17, `androidx.appcompat:appcompat` 1.7 | notifications, foreground service helpers | Apache-2.0 |
+| `androidx.work:work-runtime` 2.12 (brings `androidx.room`, `androidx.startup`, `kotlinx-coroutines`) | background uploads, rescheduled after a reboot | Apache-2.0 |
+| `tauri-plugin-aution-uploader` (this repo, `src-tauri/plugins/aution-uploader`) | the native uploader and the Keystore token store | AGPL-3.0-only (ours) |
 
 Build tools (not shipped in the APK): Amazon Corretto 21 (GPLv2 with Classpath Exception), Android SDK
 command-line tools and NDK (Android SDK licence).
@@ -107,7 +111,7 @@ Filled in on a real phone.
 | 5 minute recording with the screen off | **fails with the web recorder** (as expected): with the screen off Android feeds the WebView silence (AudioRecord stats switch from `fine` to `mute`, 12 s muted in a 20 s test). Fixed by the native recorder in phase 2 | 2026-11-05, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
 | Switching to other apps while recording | works (owner's test): recording carried on behind another app and was stopped from the notification; the note appeared when aution was opened | 2026-11-10, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
 | Incoming phone call while recording | untested | |
-| Airplane mode, then back online: queued notes upload | untested | |
+| Airplane mode, then back online: queued notes upload | works, **with the app swiped away** (needs Xiaomi's Autostart on, see phase 3): network back at 01:13:33, Android started aution in the background, uploaded at 01:13:47 (second try, 5 s after the first found the connection not ready) | 2026-11-10, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
 | Reboot with a note still queued: it uploads | untested | |
 | App killed mid-recording: recording rebuilt on next start | works: swiped away after 37 s (HyperOS kills the process even with a foreground service); on reopening the 37 s note was there, marked recovered, and uploaded | 2026-11-10, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
 | Pause / Resume from the notification | works: the app's screen followed; a 22.8 s recording with a pause gave a 17.9 s note | 2026-11-10, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0 |
@@ -184,6 +188,50 @@ through a Rust command (`read_recording`) as one binary response.
   (*untested*: the phone's own microphone is used).
 - 2-hour recording, low battery and reboot during a recording: *untested*.
 - The web recorder is still used in the browser and as the fallback if the plugin is missing.
+
+### Phase 3: native uploader
+
+**Done, checked on a real phone** (2026-11-10, Redmi Note 14 (24117RN76G), Android 16, HyperOS 3.0):
+- On Android, waiting notes go to a native **outbox** (`filesDir/outbox/<id>/audio` + `entry.json`) and a
+  **WorkManager** worker sends them: the same `POST /v1/notes`, multipart `meta` + `audio`, the device token, and
+  the note id as `Idempotency-Key` (409 counts as done). Backoff and `Retry-After` follow `src/lib/rules.ts`; the
+  Kotlin copy is `Rules.kt`, and a unit test checks that the two agree.
+- Uploads continue **with the app closed**: airplane mode on, record, swipe the app away, airplane mode off. Android
+  started the app in the background and the note uploaded about 14 s later.
+- The library shows the outbox state whenever the app is open (on its way, waiting with when it tries again,
+  "Waiting for Wi-Fi." / "Waiting for a connection.", refused with the reason, uploaded).
+- **Nothing is deleted before the server confirms**: the outbox deletes its copy only after a 2xx/409, and IndexedDB
+  keeps the note's audio until the app has seen "done", then follows "Keep audio after upload".
+- **The token is in the Android Keystore** (this was planned for phase 4, but the background worker must read it
+  without the UI): AES-256-GCM under a Keystore key, ciphertext in private preferences. On first start the token was
+  moved out of IndexedDB (checked: IndexedDB now holds an empty token). Nothing logs it.
+- "Upload waiting notes now" and a note's retry also re-arm notes the server refused. A rename made before the upload
+  goes along with it.
+- New setting **Wi-Fi only** (Android app only): the work waits for an unmetered network. *Untested on the phone.*
+- **Reboot**: WorkManager reschedules its jobs after a restart (it adds `RECEIVE_BOOT_COMPLETED`). *Untested on the phone* (skipped).
+
+**Xiaomi / Redmi / POCO (MIUI, HyperOS): the Autostart switch.** With it off (the default for a newly installed
+app), HyperOS does not start a closed app for its scheduled work, so uploads wait until the app is opened (they then
+go within seconds). There is no permission dialog for it on any Android version; an app can only open the screen with
+the switch. aution detects the switch's state (MIUI app-op 10008) and shows "To upload while aution is closed, this
+phone needs its Autostart switch on" with a button that opens it, at the top of Library and in Settings → Uploads, on
+those phones only, until it is on. Checked: the notice appeared, the button opened the right screen, the notice went
+away once the switch was on.
+
+**How it fits together**: `src/lib/uploader.ts` `kickUploads()` → `src/native/tauri-uploader.ts` (hands notes over,
+reads the outbox back into IndexedDB) → `UploaderPlugin.kt` → `Outbox.kt` + `Uploads.kt` (WorkManager) →
+`UploadWorker.kt` → the server. Audio reaches the outbox by **moving** the native recording's file (`adopt`, no copy)
+or, for imported and older notes, in base64 pieces (`stage`).
+
+**Permissions added by WorkManager**: `ACCESS_NETWORK_STATE` and `RECEIVE_BOOT_COMPLETED` (what it needs, as the brief
+allows). Its exported components are protected by system-only permissions (`BIND_JOB_SERVICE`, `DUMP`).
+
+**Limitations and untested**:
+- Uploads over 10 minutes are cut by Android's worker time limit; the note then carries on in the next run, from
+  the start (no resumable uploads). At the app's bitrate a 2-hour note is about 30 MB.
+- Renames and tag changes after the upload are still sent by the page (`flushEdits`), so only while the app is open.
+- Turning "Upload automatically" off does not stop notes already handed to the outbox.
+- Wi-Fi only, reboot, a 401 after signing out on the server, and a large file: *untested on the phone*.
 
 ### Phase 6: iOS
 

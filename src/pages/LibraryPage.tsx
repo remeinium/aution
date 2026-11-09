@@ -5,6 +5,7 @@ import { dayHeading, dayKey, defaultTitle } from '../lib/format'
 import { scheduleDelete, useNotes, useNow, useToast } from '../lib/hooks'
 import { importAudioFile, retryFailed } from '../lib/notes'
 import { kickUploads } from '../lib/uploader'
+import { AutostartNotice } from '../native/AutostartNotice'
 import type { Note } from '../lib/types'
 
 type Filter = 'all' | 'waiting' | 'uploaded' | 'attention'
@@ -77,6 +78,8 @@ export function LibraryPage() {
         <button type="button" className="secondary-button" onClick={() => picker.current?.click()}><FileUp size={14} aria-hidden="true" />Import audio</button>
         <input ref={picker} type="file" accept="audio/*,.m4a,.mp3,.wav,.ogg,.opus,.aac,.flac,.webm" multiple hidden onChange={event => void onImport(event.target.files)} />
       </div>
+
+      <AutostartNotice />
 
       {attention > 0 && <div className="banner" role="status">
         <span>{attention} {attention === 1 ? 'note needs' : 'notes need'} attention. Fix the connection in Settings, then retry.</span>

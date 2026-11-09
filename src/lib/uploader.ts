@@ -6,7 +6,9 @@ import { extensionFor } from './mime'
 import { ServerError, authHeaders, editOnServer } from './server'
 import { classifyStatus, retryDelayMs, statusMessage, uploadTimeoutMs } from './rules'
 import { loadSettings } from './settings'
+import { isAndroidApp } from '../native/platform'
 import { choose } from '../native/runtime'
+import { NativeUploader } from '../native/tauri-uploader'
 import type { Uploader } from '../native/types'
 import { APP_VERSION, type Note, type Settings } from './types'
 
@@ -186,7 +188,7 @@ function webKickUploads(options: FlushOptions = {}): void {
   }, 250)
 }
 
-const uploader: Uploader = choose({ web: () => ({ kick: webKickUploads }) })
+const uploader: Uploader = choose<Uploader>({ web: () => ({ kick: webKickUploads }), ...(isAndroidApp() ? { tauri: () => new NativeUploader() } : {}) })
 
 /** Starts an upload pass now and keeps retrying with backoff: in the page, or natively inside the app. Safe to call often. */
 export function kickUploads(options: FlushOptions = {}): void {

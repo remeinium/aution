@@ -85,6 +85,13 @@ export async function clearChunks(noteId: string): Promise<void> {
   await (await db()).delete('chunks', IDBKeyRange.bound([noteId, 0], [noteId, Number.MAX_SAFE_INTEGER]))
 }
 
+const deleteHooks = new Set<(id: string) => void>()
+
+/** Runs [hook] after a note is deleted from this device (the native uploader drops it from its outbox). */
+export function onNoteDeleted(hook: (id: string) => void): void {
+  deleteHooks.add(hook)
+}
+
 export async function deleteNoteCompletely(id: string): Promise<void> {
   const database = await db()
   const tx = database.transaction(['notes', 'audio', 'chunks'], 'readwrite')
@@ -94,4 +101,5 @@ export async function deleteNoteCompletely(id: string): Promise<void> {
     tx.objectStore('chunks').delete(IDBKeyRange.bound([id, 0], [id, Number.MAX_SAFE_INTEGER])),
     tx.done,
   ])
+  for (const hook of deleteHooks) hook(id)
 }
