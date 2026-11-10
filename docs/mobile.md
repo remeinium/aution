@@ -273,6 +273,10 @@ allows). The uploader adds `FOREGROUND_SERVICE_DATA_SYNC` for long uploads (abov
   already stores the note. An interrupted upload still restarts from the beginning (no resumable uploads). Android
   may refuse the foreground job when the app is not on screen (Android 12+); that upload then runs as ordinary
   background work, with the 10-minute limit.
+  The same 5-minute limit hid in the server's **transcription** request: Node's `fetch` gives up when response
+  headers take over 300 s (undici's `headersTimeout`), and Whisper answers only when the whole file is done. The
+  15-minute note failed with "fetch failed" after 5 m 8 s. The transcription request now uses an undici `Agent`
+  without those timeouts; its own timeout grows with the file (15 min + 2 min per MB).
 - Renames and tag changes after the upload are still sent by the page (`flushEdits`), so only while the app is open.
 - Turning "Upload automatically" off does not stop notes already handed to the outbox.
 - Wi-Fi only, reboot, a 401 after signing out on the server, and a large file: *untested on the phone*.
