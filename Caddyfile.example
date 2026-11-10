@@ -10,6 +10,9 @@
 # The domain's DNS A record must already point at this server, and ports 80 and 443 must reach Caddy.
 brain.example.com {
 	encode zstd gzip
-	# No request_body max_size: recordings of any length are accepted (the server has no limit either).
+	# Recordings up to 1 GB (about 70 hours at the default bitrate of the app). The server itself has no limit.
+	request_body {
+		max_size 1GB
+	}
 	reverse_proxy 127.0.0.1:18787
 }
