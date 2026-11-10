@@ -6,7 +6,9 @@ import type { NoteMeta } from './types.ts'
 import { UUID } from './util.ts'
 
 const EXTENSIONS: Record<string, string> = { 'audio/webm': 'webm', 'audio/mp4': 'm4a', 'audio/x-m4a': 'm4a', 'audio/m4a': 'm4a', 'audio/ogg': 'ogg', 'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/aac': 'aac', 'audio/flac': 'flac' }
-const MAX_BYTES = Number(process.env.MAX_UPLOAD_MB ?? 200) * 1024 * 1024
+/** No size limit unless MAX_UPLOAD_MB is set (a positive number of MB): a recording is never refused for being long. */
+const MAX_MB = Number(process.env.MAX_UPLOAD_MB ?? 0)
+const MAX_BYTES = Number.isFinite(MAX_MB) && MAX_MB > 0 ? MAX_MB * 1024 * 1024 : Number.POSITIVE_INFINITY
 
 const text = (value: unknown, max: number) => (typeof value === 'string' ? value.slice(0, max) : '')
 const numberOr = (value: unknown, fallback: number) => (typeof value === 'number' && Number.isFinite(value) ? value : fallback)

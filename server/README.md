@@ -196,11 +196,11 @@ Check it is alive: `docker compose exec stt python -c "import urllib.request; pr
 | `OWNER_PASSPHRASE` | **Legacy.** Only used while Google sign-in is not configured. 12+ characters |
 | `MCP_TOKEN` | Optional fixed bearer token for clients without OAuth |
 | `OWNER_TIMEZONE` | IANA zone for "today" and "overdue" (default UTC) |
-| `STT_PROVIDER`, `STT_BASE_URL`, `STT_API_KEY`, `STT_MODEL`, `STT_LANGUAGE`, `STT_PROMPT`, `STT_MAX_MB` | An OpenAI-compatible `/audio/transcriptions` server (the bundled Whisper container). Gemini is no longer supported and is refused at start. `*_API_KEY` may list several keys, comma separated |
+| `STT_PROVIDER`, `STT_BASE_URL`, `STT_API_KEY`, `STT_MODEL`, `STT_LANGUAGE`, `STT_PROMPT`, `STT_MAX_MB` | An OpenAI-compatible `/audio/transcriptions` server (the bundled Whisper container). Gemini is no longer supported and is refused at start. `*_API_KEY` may list several keys, comma separated. `STT_MAX_MB` is unset (no limit) by default; set `25` for OpenAI's hosted API, which refuses bigger files |
 | `LLM_PROVIDER`, `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_COMMAND`, `LLM_CLI_ENV`, `LLM_MAX_INPUT_CHARS` | **Optional** (see *Who sorts the notes*). An OpenAI-compatible server, Anthropic, or an agent program, so notes are sorted on the server without an assistant. Off by default. |
 | `ALLOWED_ORIGIN` | CORS origin for the recorder app (default `*`) |
 | `STORAGE_BACKEND`, `DRIVE_RETAIN_AUDIO` | Where the notes (audio, transcripts, digests) are kept: `local` (default, files under `DATA_DIR/inbox/`) or `drive` (each user's own Google Drive). `DRIVE_RETAIN_AUDIO` is `keep` (default) or `drop-after-digest`. See *Storage* below |
-| `DATA_DIR`, `PORT`, `HOST`, `MAX_UPLOAD_MB`, `MAX_ATTEMPTS`, `GIT`, `WORKER`, `REINDEX` | Defaults are fine |
+| `DATA_DIR`, `PORT`, `HOST`, `MAX_UPLOAD_MB`, `MAX_ATTEMPTS`, `GIT`, `WORKER`, `REINDEX` | Defaults are fine. `MAX_UPLOAD_MB` is unset by default: no upload size limit |
 
 Without `STT_BASE_URL` the server still accepts and stores notes; `GET /v1/status` (and the startup log) says what is missing. `awaitingAssistant` in the status counts notes written down but not yet sorted by ChatGPT.
 

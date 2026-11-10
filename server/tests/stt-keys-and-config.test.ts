@@ -39,7 +39,7 @@ describe('several API keys', () => {
 
 describe('choosing the transcriber from the environment', () => {
   const env = { INSECURE: '1' }
-  it('is an OpenAI-compatible Whisper server', () => { expect(loadConfig({ ...env, STT_BASE_URL: 'http://stt:8000/v1/' }).stt).toMatchObject({ provider: 'openai', baseUrl: 'http://stt:8000/v1', model: 'whisper-1', maxMb: 24 }) })
+  it('is an OpenAI-compatible Whisper server, with no size limit unless STT_MAX_MB says so', () => { expect(loadConfig({ ...env, STT_BASE_URL: 'http://stt:8000/v1/' }).stt).toMatchObject({ provider: 'openai', baseUrl: 'http://stt:8000/v1', model: 'whisper-1', maxMb: 0 }) })
   it('is off when nothing is set', () => { expect(loadConfig(env).stt).toBeNull() })
   it('refuses Gemini, with a clear message, instead of quietly sending audio to Google', () => {
     expect(() => loadConfig({ ...env, STT_PROVIDER: 'gemini' })).toThrow(/Whisper server/)

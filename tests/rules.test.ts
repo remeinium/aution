@@ -26,8 +26,10 @@ describe('upload rules', () => {
   })
   it('allows slow connections more time for bigger files', () => {
     expect(uploadTimeoutMs(0)).toBe(60_000)
-    expect(uploadTimeoutMs(10_000_000)).toBe(260_000)
-    expect(uploadTimeoutMs(10 ** 12)).toBe(900_000)
+    expect(uploadTimeoutMs(10_000_000)).toBe(1_060_000)
+    // No upper cap: a 43 MB recording gets over an hour, a 1 GB one over a day.
+    expect(uploadTimeoutMs(43_000_000)).toBe(4_360_000)
+    expect(uploadTimeoutMs(10 ** 9)).toBe(100_060_000)
   })
 })
 

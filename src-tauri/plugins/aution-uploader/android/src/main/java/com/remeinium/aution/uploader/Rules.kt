@@ -25,7 +25,8 @@ object Rules {
     return if (retryAfterSeconds > 0) max(delay, min(retryAfterSeconds, 3600) * 1000) else delay
   }
 
-  fun uploadTimeoutMs(size: Long): Long = min(15 * 60_000L, 60_000L + ((size + 49_999) / 50_000) * 1000)
+  /** A minute plus a second per 10 KB, with no upper cap: a long recording is never cut off for its size. */
+  fun uploadTimeoutMs(size: Long): Long = 60_000L + ((size + 9_999) / 10_000) * 1000
 
   fun statusMessage(status: Int): String = when {
     status == 401 || status == 403 -> "The server rejected the access token."

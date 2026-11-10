@@ -117,7 +117,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     tokenEncryptionKey,
     allowedOrigin: text(env.ALLOWED_ORIGIN, '*'),
     ownerTimezone: text(env.OWNER_TIMEZONE, 'UTC'),
-    stt: sttBase ? { provider: 'openai', baseUrl: sttBase, apiKey: text(env.STT_API_KEY), model: text(env.STT_MODEL, 'whisper-1'), language: text(env.STT_LANGUAGE, 'en'), maxMb: Number(env.STT_MAX_MB ?? 24), prompt: text(env.STT_PROMPT) } : null,
+    stt: sttBase ? { provider: 'openai', baseUrl: sttBase, apiKey: text(env.STT_API_KEY), model: text(env.STT_MODEL, 'whisper-1'), language: text(env.STT_LANGUAGE, 'en'), maxMb: Number(env.STT_MAX_MB ?? 0), prompt: text(env.STT_PROMPT) } : null,
     llm: readLlm(env),
     workerEnabled: env.WORKER !== '0',
     workerIntervalMs: Number(env.WORKER_INTERVAL_MS ?? 5000),

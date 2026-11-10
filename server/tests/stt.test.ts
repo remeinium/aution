@@ -74,4 +74,12 @@ describe('transcription client', () => {
   it('reports an unreachable service as retryable', async () => {
     await expect(transcribe({ ...config(), baseUrl: 'http://127.0.0.1:1' }, audio, 'audio/webm')).rejects.toThrow(/unreachable/)
   })
+
+  it('has no size limit by default (STT_MAX_MB=0), and gives long recordings more time', async () => {
+    const { transcribeTimeoutMs } = await import('../src/stt.ts')
+    expect(config({ maxMb: 0 }).maxMb).toBe(0)
+    await expect(transcribe(config({ maxMb: 0 }), audio, 'audio/webm')).resolves.toBeTruthy()
+    expect(transcribeTimeoutMs(1)).toBe(17 * 60_000)
+    expect(transcribeTimeoutMs(38 * 1048576)).toBe((15 + 76) * 60_000)
+  })
 })

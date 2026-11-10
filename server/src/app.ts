@@ -177,6 +177,17 @@ export function createApp(config: Config, options: PipelineOptions = {}, authOpt
   app.get('/v1/notes', async (_req, res, next) => {
     try { res.setHeader('Cache-Control', 'no-store'); res.json({ notes: await (await tenantOf(res)).brain.namesForApp() }) } catch (error) { next(error) }
   })
+  // Whether this device's note is stored, so an app can skip re-sending a long recording whose upload went through but
+  // whose answer was lost (a dropped connection after the server had it all).
+  app.get('/v1/notes/:id', async (req, res, next) => {
+    try {
+      const id = String(req.params.id)
+      if (!UUID.test(id)) { res.status(404).json({ stored: false }); return }
+      res.setHeader('Cache-Control', 'no-store')
+      const stored = await (await tenantOf(res)).brain.store.has(id)
+      res.status(stored ? 200 : 404).json({ id, stored })
+    } catch (error) { next(error) }
+  })
   app.post('/v1/notes', async (req, res, next) => {
     try {
       const mine = await tenantOf(res)
@@ -315,6 +326,10 @@ export function createApp(config: Config, options: PipelineOptions = {}, authOpt
       return new Promise((resolve, reject) => {
         http = app.listen(port, config.host, () => { const address = http?.address(); resolve(typeof address === 'object' && address ? address.port : port) })
         http.on('error', reject)
+        // Node ends any request that takes longer than 5 minutes by default (requestTimeout). A long recording over a
+        // slow mobile connection takes longer than that to upload, so there is no limit on the whole request. The
+        // 60 s limit for the headers stays, so an idle connection that never sends a request is still closed.
+        http.requestTimeout = 0
       })
     },
     async close() {

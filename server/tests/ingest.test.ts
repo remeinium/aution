@@ -48,3 +48,22 @@ describe('the upload contract the recorder app relies on', () => {
     expect(Number.isNaN(new Date(meta.createdAt).getTime())).toBe(false)
   })
 })
+
+describe('long recordings', () => {
+  it('says whether a note is stored, so the app can skip re-sending one whose answer was lost', async () => {
+    const id = '66666666-6666-4666-8666-666666666666'
+    const auth = { Authorization: 'Bearer test-ingest-token-123' }
+    expect((await fetch(`${server.base}/v1/notes/${id}`, { headers: auth })).status).toBe(404)
+    expect((await upload(server.base, { id })).status).toBe(201)
+    const found = await fetch(`${server.base}/v1/notes/${id}`, { headers: auth })
+    expect(found.status).toBe(200)
+    expect(await found.json()).toMatchObject({ id, stored: true })
+    expect((await fetch(`${server.base}/v1/notes/${id}`)).status).toBe(401)
+    expect((await fetch(`${server.base}/v1/notes/not-a-note`, { headers: auth })).status).toBe(404)
+  })
+
+  it('takes a recording far over the old limits (24 MB transcription, used to be refused at the door too)', async () => {
+    const big = '77777777-7777-4777-8777-777777777777'
+    expect((await upload(server.base, { id: big, audio: new Uint8Array(40 * 1024 * 1024) })).status).toBe(201)
+  })
+})

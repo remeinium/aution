@@ -15,8 +15,12 @@ export function retryDelayMs(attempts: number, random: () => number = Math.rando
   return retryAfterSeconds > 0 ? Math.max(delay, Math.min(retryAfterSeconds, 3600) * 1000) : delay
 }
 
+/**
+ * How long one upload may take in total: a minute, plus a second per 10 KB. No upper cap, so a long recording is never
+ * cut off for its size; it only needs the connection to manage about 10 KB/s (80 kbit/s) on average.
+ */
 export function uploadTimeoutMs(size: number): number {
-  return Math.min(15 * 60_000, 60_000 + Math.ceil(size / 50_000) * 1000)
+  return 60_000 + Math.ceil(size / 10_000) * 1000
 }
 
 export function statusMessage(status: number): string {

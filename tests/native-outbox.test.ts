@@ -73,7 +73,7 @@ describe('Kotlin upload rules match src/lib/rules.ts', () => {
     expect(kotlin).toContain('"The server answered $status."')
   })
   it('uses the same numbers', () => {
-    for (const piece of ['status == 409', 'status == 408 || status == 425 || status == 429 || status >= 500', '15 * 60_000', '5_000.0', '0.8 + random * 0.4', '3600', '50_000']) {
+    for (const piece of ['status == 409', 'status == 408 || status == 425 || status == 429 || status >= 500', '15 * 60_000', '5_000.0', '0.8 + random * 0.4', '3600', '60_000L + ((size + 9_999) / 10_000) * 1000']) {
       expect(kotlin).toContain(piece)
     }
   })

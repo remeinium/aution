@@ -26,7 +26,7 @@ function retryDelayMs(attempts, random, retryAfterSeconds) {
 }
 
 function uploadTimeoutMs(size) {
-  return Math.min(15 * 60000, 60000 + Math.ceil(size / 50000) * 1000)
+  return 60000 + Math.ceil(size / 10000) * 1000
 }
 
 function statusMessage(status) {

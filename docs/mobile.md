@@ -261,11 +261,18 @@ reads the outbox back into IndexedDB) → `UploaderPlugin.kt` → `Outbox.kt` + 
 or, for imported and older notes, in base64 pieces (`stage`).
 
 **Permissions added by WorkManager**: `ACCESS_NETWORK_STATE` and `RECEIVE_BOOT_COMPLETED` (what it needs, as the brief
-allows). Its exported components are protected by system-only permissions (`BIND_JOB_SERVICE`, `DUMP`).
+allows). The uploader adds `FOREGROUND_SERVICE_DATA_SYNC` for long uploads (above). Its exported components are protected by system-only permissions (`BIND_JOB_SERVICE`, `DUMP`).
 
 **Limitations and untested**:
-- Uploads over 10 minutes are cut by Android's worker time limit; the note then carries on in the next run, from
-  the start (no resumable uploads). At the app's bitrate a 2-hour note is about 30 MB.
+- **Long uploads (fixed 2026-11-10, after a 37 MB and a 43 MB import never finished).** Three causes: Node ended
+  any request longer than 5 minutes (`requestTimeout`), Android stops background work after 10 minutes, and a retry
+  re-sent the whole file even when the server already had it (its answer had been lost). Now: the server has no
+  total request time limit and no size limit (`MAX_UPLOAD_MB`, `STT_MAX_MB` unset by default; Caddy has no
+  `max_size`); uploads of 2 MB and more run as a foreground job with an "Uploading a recording" notification
+  (`FOREGROUND_SERVICE_DATA_SYNC`); and a retry first asks `GET /v1/notes/<id>` and skips the upload when the server
+  already stores the note. An interrupted upload still restarts from the beginning (no resumable uploads). Android
+  may refuse the foreground job when the app is not on screen (Android 12+); that upload then runs as ordinary
+  background work, with the 10-minute limit.
 - Renames and tag changes after the upload are still sent by the page (`flushEdits`), so only while the app is open.
 - Turning "Upload automatically" off does not stop notes already handed to the outbox.
 - Wi-Fi only, reboot, a 401 after signing out on the server, and a large file: *untested on the phone*.

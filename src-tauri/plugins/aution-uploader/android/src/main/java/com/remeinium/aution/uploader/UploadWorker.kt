@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 package com.remeinium.aution.uploader
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.ServiceInfo
+import android.os.Build
+import androidx.core.app.NotificationCompat
+import androidx.work.ForegroundInfo
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import java.io.IOException
@@ -23,6 +29,10 @@ class UploadWorker(context: Context, params: WorkerParameters) : Worker(context,
   companion object {
     /** One upload pass at a time in this process: the "now" and the "later" work may start together. */
     private val running = ReentrantLock()
+    /** Uploads at least this big run in the foreground (see [goForeground]). */
+    private const val FOREGROUND_BYTES = 2L * 1024 * 1024
+    private const val CHANNEL = "uploads"
+    private const val NOTIFICATION_ID = 7302
   }
 
   override fun doWork(): Result {
@@ -72,9 +82,19 @@ class UploadWorker(context: Context, params: WorkerParameters) : Worker(context,
       Outbox.forget(context, entry.id)
       return
     }
+    // A retry of an upload that went through but whose answer was lost (the connection dropped after the server had
+    // it all): ask first instead of sending a long recording again. A server without this question answers 404.
+    if (entry.attempts > 0 || audio.length() >= FOREGROUND_BYTES) {
+      if (alreadyStored(endpoint, token, entry.id)) {
+        Outbox.update(context, entry.id) { it.copy(state = "done", uploadedAt = System.currentTimeMillis(), lastError = null, nextAttemptAt = 0) }
+        audio.delete()
+        return
+      }
+    }
     val attempts = entry.attempts + 1
     Outbox.update(context, entry.id) { it.copy(state = "uploading", attempts = attempts) } ?: return
     UploaderPlugin.changed()
+    if (audio.length() >= FOREGROUND_BYTES) goForeground(audio.length())
 
     val boundary = "aution-" + UUID.randomUUID()
     val head = ("--$boundary\r\nContent-Disposition: form-data; name=\"meta\"\r\n\r\n" + entry.meta + "\r\n" +
@@ -131,6 +151,50 @@ class UploadWorker(context: Context, params: WorkerParameters) : Worker(context,
       }
     } finally {
       connection?.disconnect()
+    }
+  }
+
+  /** `GET /v1/notes/<id>`: 200 when the server already stores this note. Any failure counts as "not stored". */
+  private fun alreadyStored(endpoint: String, token: String, id: String): Boolean {
+    var connection: HttpURLConnection? = null
+    return try {
+      connection = (URL("$endpoint/v1/notes/$id").openConnection() as HttpURLConnection).apply {
+        connectTimeout = 15_000
+        readTimeout = 15_000
+        setRequestProperty("Authorization", "Bearer $token")
+      }
+      connection.responseCode == 200
+    } catch (_: IOException) {
+      false
+    } finally {
+      connection?.disconnect()
+    }
+  }
+
+  /**
+   * Turns this work into a foreground job with an "Uploading" notification, so Android neither stops it at the
+   * 10-minute limit for background work nor freezes the app during a long upload. Android may refuse when the app is
+   * not on screen (Android 12+); the upload then carries on as ordinary background work.
+   */
+  private fun goForeground(bytes: Long) {
+    try {
+      val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && manager.getNotificationChannel(CHANNEL) == null) {
+        manager.createNotificationChannel(NotificationChannel(CHANNEL, "Uploads", NotificationManager.IMPORTANCE_LOW))
+      }
+      val notification = NotificationCompat.Builder(applicationContext, CHANNEL)
+        .setSmallIcon(android.R.drawable.stat_sys_upload)
+        .setContentTitle("Uploading a recording")
+        .setContentText("%.0f MB".format(bytes / 1048576.0))
+        .setOngoing(true)
+        .setSilent(true)
+        .setProgress(0, 0, true)
+        .build()
+      val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) ForegroundInfo(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        else ForegroundInfo(NOTIFICATION_ID, notification)
+      setForegroundAsync(info).get()
+    } catch (_: Exception) {
+      // Not allowed right now: carry on in the background.
     }
   }
 }

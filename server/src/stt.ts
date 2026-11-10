@@ -28,8 +28,15 @@ export async function transcribe(config: Stt, audioPath: string, mime: string, f
 }
 
 /** The same, for audio that is already in memory (the pipeline gets it from storage, which may not be a local file). */
+/** Long recordings take long to transcribe on a CPU: 15 minutes, plus 2 minutes for every MB. */
+export function transcribeTimeoutMs(bytes: number): number {
+  return 15 * 60_000 + Math.ceil(bytes / 1048576) * 2 * 60_000
+}
+
 export async function transcribeBytes(config: Stt, audio: Uint8Array, filename: string, mime: string, fetchImpl: Fetch = fetch): Promise<Transcript> {
-  if (audio.byteLength > config.maxMb * 1024 * 1024) {
+  // 0 (the default) means no limit: the bundled Whisper takes any length. OpenAI's hosted API refuses files over 25 MB,
+  // so set STT_MAX_MB=25 there to get a clear message instead of its error.
+  if (config.maxMb > 0 && audio.byteLength > config.maxMb * 1024 * 1024) {
     throw new PermanentError(`The recording is ${(audio.byteLength / 1048576).toFixed(0)} MB, over the ${config.maxMb} MB limit for this transcription service. Use a local transcriber or raise STT_MAX_MB.`)
   }
   const form = new FormData()
@@ -47,7 +54,7 @@ export async function transcribeBytes(config: Stt, audio: Uint8Array, filename: 
       method: 'POST',
       headers: key ? { Authorization: `Bearer ${key}` } : {},
       body: form,
-      signal: AbortSignal.timeout(15 * 60_000),
+      signal: AbortSignal.timeout(transcribeTimeoutMs(audio.byteLength)),
     }))
   } catch (error) {
     throw new Error(`Transcription service unreachable: ${errorText(error)}`)

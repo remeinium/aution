@@ -1,7 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- WorkManager adds what it needs itself (network state for "connected" / "Wi-Fi only", boot completed to
-         reschedule after a restart, wake lock while a worker runs). -->
+    <!-- A long upload runs as a visible "Uploading" foreground job, so Android neither stops it after 10 minutes nor
+         freezes the app in the middle of it. Android 14 requires the service type and its permission. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- WorkManager adds the rest itself (network state for "connected" / "Wi-Fi only", boot completed to reschedule
+         after a restart, wake lock while a worker runs). -->
+
+    <application>
+        <!-- WorkManager's own foreground service, given the type our long uploads use. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
+    </application>
 </manifest>
