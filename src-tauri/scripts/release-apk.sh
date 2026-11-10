@@ -4,7 +4,8 @@
 #
 # Signing comes from outside the repository (see src-tauri/gen/android/app/build.gradle.kts):
 #   AUTION_SIGNING_PROPERTIES=/path/to/release.properties   (default: ~/.config/aution/release.properties if it exists)
-#   or AUTION_KEYSTORE_FILE + AUTION_KEYSTORE_PASSWORD (+ AUTION_KEY_ALIAS, AUTION_KEY_PASSWORD), as in CI.
+#   or AUTION_KEYSTORE_FILE + AUTION_KEYSTORE_PASSWORD (+ AUTION_KEY_ALIAS, AUTION_KEY_PASSWORD), as in CI,
+#   or ANDROID_KEYSTORE_BASE64 + ANDROID_KEYSTORE_PASSWORD from Doppler:  doppler run -p aution -c prd -- npm run android:release
 # Nothing secret is printed. Without signing values the build stops, so an unsigned APK is never published by mistake.
 #
 # CPU types: arm64 (every phone of the last decade) and armv7 (older phones). x86 is left out: emulators and a few
@@ -12,6 +13,13 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/../.."
+# From Doppler (doppler run -p aution -c prd -- npm run android:release) or CI-style variables: the key arrives as base64.
+if [[ -z "${AUTION_KEYSTORE_FILE:-}" && -n "${ANDROID_KEYSTORE_BASE64:-}" ]]; then
+  keystore=$(mktemp)
+  trap 'rm -f "$keystore"' EXIT
+  printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$keystore"
+  export AUTION_KEYSTORE_FILE="$keystore" AUTION_KEYSTORE_PASSWORD="${ANDROID_KEYSTORE_PASSWORD:?}" AUTION_KEY_ALIAS="${ANDROID_KEY_ALIAS:-aution}"
+fi
 if [[ -z "${AUTION_SIGNING_PROPERTIES:-}" && -z "${AUTION_KEYSTORE_FILE:-}" && -f "$HOME/.config/aution/release.properties" ]]; then
   export AUTION_SIGNING_PROPERTIES="$HOME/.config/aution/release.properties"
 fi

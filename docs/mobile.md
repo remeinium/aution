@@ -109,7 +109,9 @@ platform 37, build-tools 37.0.0 and NDK 30.0.16248370, Rust with the targets `aa
 **Signing.** The key is `~/.config/aution/release.jks` (alias `aution`, RSA 4096, valid until 2054), its password in
 `~/.config/aution/release.properties`, both readable only by the owner and **outside the repository**. Certificate
 SHA-256: `42:F2:95:BB:AE:D4:04:FE:37:68:41:FE:77:61:B4:55:20:B3:32:0C:F4:B1:2D:C3:8B:D6:37:EC:10:B6:C4:F0`.
-**Back both files up somewhere safe** (a password manager, an encrypted drive): every future update must be signed
+A copy is in **Doppler** (project `aution`, config `prd`: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`,
+`ANDROID_KEY_ALIAS`, `ANDROID_CERT_SHA256`), so on another machine `doppler run -p aution -c prd -- npm run android:release`
+builds a signed APK with no key file on disk. **Keep a second backup outside Doppler too** (a password manager, an encrypted drive): every future update must be signed
 with this key, or installed phones refuse it and people must uninstall (losing unsent notes) to get the new version.
 
 Gradle reads the key from the environment (`src-tauri/gen/android/app/build.gradle.kts`), never from the repo:
