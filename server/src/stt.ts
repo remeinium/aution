@@ -1,10 +1,19 @@
 import { readFile } from 'node:fs/promises'
+import { Agent } from 'undici'
 import type { Config } from './config.ts'
 import type { Segment, Transcript } from './types.ts'
 import { PermanentError, errorText, withKeys } from './util.ts'
 
 type Stt = NonNullable<Config['stt']>
 export type Fetch = typeof fetch
+
+/**
+ * Node's fetch gives up when the response headers take more than 5 minutes (undici's headersTimeout), and Whisper
+ * only answers once the whole recording is transcribed: a 15-minute recording takes longer than that on a CPU. This
+ * agent waits as long as the transcription takes; the AbortSignal below is the only limit, and it grows with the file.
+ * Same undici major version as Node's own (7), so Node's fetch accepts it as its dispatcher.
+ */
+const patient = new Agent({ headersTimeout: 0, bodyTimeout: 0 })
 
 const FILLER_ONLY = /^(?:thank you|thanks for watching|thanks|you|bye|okay|\.|,|\s)*$/i
 
@@ -55,7 +64,8 @@ export async function transcribeBytes(config: Stt, audio: Uint8Array, filename: 
       headers: key ? { Authorization: `Bearer ${key}` } : {},
       body: form,
       signal: AbortSignal.timeout(transcribeTimeoutMs(audio.byteLength)),
-    }))
+      dispatcher: patient,
+    } as RequestInit))
   } catch (error) {
     throw new Error(`Transcription service unreachable: ${errorText(error)}`)
   }
