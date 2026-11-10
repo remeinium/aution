@@ -50,8 +50,12 @@ describe('patchFromUpload', () => {
     expect(patchFromUpload(note(), upload(), null, NOW)).toMatchObject({ status: 'uploading' })
   })
   it('returns null when nothing changes, so the library does not redraw for nothing', () => {
-    const current = note({ status: 'uploading', attempts: 1 })
-    expect(patchFromUpload(current, upload({ state: 'uploading', attempts: 1 }), null, NOW)).toBeNull()
+    const current = note({ status: 'uploading', attempts: 1, uploadProgress: 40 })
+    expect(patchFromUpload(current, upload({ state: 'uploading', attempts: 1, progress: 40 }), null, NOW)).toBeNull()
+  })
+  it('carries the percent sent while uploading, and drops it once the upload ends', () => {
+    expect(patchFromUpload(note({ status: 'uploading' }), upload({ state: 'uploading', attempts: 1, progress: 42 }), null, NOW)).toMatchObject({ uploadProgress: 42 })
+    expect(patchFromUpload(note({ status: 'uploading', uploadProgress: 99 }), upload({ state: 'done', attempts: 1, uploadedAt: NOW }), null, NOW)).toMatchObject({ status: 'uploaded', uploadProgress: undefined })
   })
 })
 
@@ -85,5 +89,15 @@ describe('toBase64 (audio pieces for the outbox)', () => {
     const bytes = new Uint8Array(100_000).map((_, i) => (i * 7) % 256)
     expect(Buffer.from(toBase64(bytes), 'base64').equals(Buffer.from(bytes))).toBe(true)
     expect(toBase64(new Uint8Array())).toBe('')
+  })
+})
+
+describe('upload percent in the status label', () => {
+  it('shows the percent only while a note is being sent, as words plus a number', async () => {
+    const { describeStatus } = await import('../src/lib/statusView')
+    const { DEFAULT_SETTINGS } = await import('../src/lib/types')
+    expect(describeStatus(note({ status: 'uploading', uploadProgress: 42.4 }), DEFAULT_SETTINGS, NOW, true)).toMatchObject({ text: 'Uploading', percent: 42 })
+    expect(describeStatus(note({ status: 'uploading' }), DEFAULT_SETTINGS, NOW, true).percent).toBeUndefined()
+    expect(describeStatus(note({ status: 'uploaded', uploadProgress: 100 }), DEFAULT_SETTINGS, NOW, true).percent).toBeUndefined()
   })
 })

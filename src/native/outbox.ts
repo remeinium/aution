@@ -17,6 +17,8 @@ export interface NativeUpload {
   /** ms since epoch; 0 means as soon as there is a connection. */
   nextAttemptAt: number
   uploadedAt: number | null
+  /** Percent of the file sent in the current attempt (0–100). */
+  progress?: number
 }
 
 /** What waiting uploads are held up by: no connection, or only mobile data with "Wi-Fi only" on. */
@@ -39,19 +41,19 @@ export function patchFromUpload(note: Note, upload: NativeUpload, waitingFor: Wa
   let patch: Partial<Note>
   switch (upload.state) {
     case 'done':
-      patch = { status: 'uploaded', uploadedAt: upload.uploadedAt ?? now, lastError: null, nextAttemptAt: null, attempts: upload.attempts }
+      patch = { status: 'uploaded', uploadedAt: upload.uploadedAt ?? now, lastError: null, nextAttemptAt: null, attempts: upload.attempts, uploadProgress: undefined }
       break
     case 'failed':
-      patch = { status: 'failed', lastError: upload.lastError, nextAttemptAt: null, attempts: upload.attempts }
+      patch = { status: 'failed', lastError: upload.lastError, nextAttemptAt: null, attempts: upload.attempts, uploadProgress: undefined }
       break
     case 'uploading':
-      patch = { status: 'uploading', attempts: upload.attempts }
+      patch = { status: 'uploading', attempts: upload.attempts, uploadProgress: upload.progress ?? 0 }
       break
     default:
-      if (waitingFor) patch = { status: 'local', lastError: waitingMessage(waitingFor), nextAttemptAt: null, attempts: upload.attempts }
-      else if (upload.nextAttemptAt > now) patch = { status: 'local', lastError: upload.lastError, nextAttemptAt: upload.nextAttemptAt, attempts: upload.attempts }
-      // Due now: it goes as soon as the worker runs. Shown as on its way, with the last problem if there was one.
-      else patch = { status: 'uploading', lastError: upload.lastError, nextAttemptAt: null, attempts: upload.attempts }
+      if (waitingFor) patch = { status: 'local', lastError: waitingMessage(waitingFor), nextAttemptAt: null, attempts: upload.attempts, uploadProgress: undefined }
+      else if (upload.nextAttemptAt > now) patch = { status: 'local', lastError: upload.lastError, nextAttemptAt: upload.nextAttemptAt, attempts: upload.attempts, uploadProgress: undefined }
+      // Due now: it goes as soon as the worker runs. Shown as on its way (no percent yet), with the last problem if any.
+      else patch = { status: 'uploading', lastError: upload.lastError, nextAttemptAt: null, attempts: upload.attempts, uploadProgress: undefined }
   }
   const changed = (Object.keys(patch) as (keyof Note)[]).some(key => patch[key] !== note[key])
   return changed ? patch : null

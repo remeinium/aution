@@ -27,11 +27,13 @@ data class Entry(
   /** Not before this moment (ms since epoch); 0 means as soon as there is a connection. */
   val nextAttemptAt: Long,
   val uploadedAt: Long?,
+  /** Percent of the file sent in the current attempt (0–100); only meaningful while "uploading". */
+  val progress: Int = 0,
 ) {
   fun toJson(): JSONObject = JSONObject()
     .put("id", id).put("meta", meta).put("mime", mime).put("fileName", fileName).put("queuedAt", queuedAt)
     .put("state", state).put("attempts", attempts).put("lastError", lastError ?: JSONObject.NULL)
-    .put("nextAttemptAt", nextAttemptAt).put("uploadedAt", uploadedAt ?: JSONObject.NULL)
+    .put("nextAttemptAt", nextAttemptAt).put("uploadedAt", uploadedAt ?: JSONObject.NULL).put("progress", progress)
 
   companion object {
     fun fromJson(json: JSONObject) = Entry(
@@ -45,6 +47,7 @@ data class Entry(
       lastError = if (json.isNull("lastError")) null else json.optString("lastError"),
       nextAttemptAt = json.optLong("nextAttemptAt", 0),
       uploadedAt = if (json.isNull("uploadedAt")) null else json.optLong("uploadedAt"),
+      progress = json.optInt("progress", 0),
     )
   }
 }

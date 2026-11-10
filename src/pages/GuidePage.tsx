@@ -121,7 +121,11 @@ bearer_token_env_var = "AUTION_KEY"`}</pre>
 
       <section className="settings-section guide-section" id="guide-install" aria-labelledby="g8">
         <h2 id="g8">8. Put it on your phone</h2>
-        <p>On Android, open the browser menu and choose <strong>Install app</strong> (or <strong>Add to Home screen</strong>). On iPhone, tap Share, then <strong>Add to Home Screen</strong>. Then it opens like any app, works offline, and has a Record shortcut when you press and hold its icon.</p>
+        <p><strong>Android: the aution app.</strong> It keeps recording with the screen off and uploads in the background, also after the phone restarts. In Settings, under <strong>Android app</strong>, tap <strong>Download the Android app</strong>, then open the downloaded file and allow the install. A new version installs the same way, over the old one: your notes stay.</p>
+        <p>On <strong>Xiaomi, Redmi and POCO</strong> phones, turn on <strong>Autostart</strong> for aution, or recordings only upload while the app is open. aution shows a <strong>Turn on Autostart</strong> button at the top of the Library until it is on: tap it and switch aution on.</p>
+        <Shot file="autostart-notice.png" alt="aution's Uploads settings: To upload while aution is closed, this phone needs its Autostart switch on, with a Turn on Autostart button" />
+        <Shot file="autostart.png" alt="The phone's Background autostart screen with the switch next to aution turned on" />
+        <p><strong>iPhone, or Android without the app:</strong> in the browser, tap Share, then <strong>Add to Home Screen</strong> (iPhone), or open the browser menu and choose <strong>Install app</strong> (Android). Then it opens like any app, works offline, and has a Record shortcut when you press and hold its icon.</p>
       </section>
 
       <section className="settings-section guide-section" id="guide-privacy" aria-labelledby="g9">

@@ -92,9 +92,9 @@ class UploadWorker(context: Context, params: WorkerParameters) : Worker(context,
       }
     }
     val attempts = entry.attempts + 1
-    Outbox.update(context, entry.id) { it.copy(state = "uploading", attempts = attempts) } ?: return
+    Outbox.update(context, entry.id) { it.copy(state = "uploading", attempts = attempts, progress = 0) } ?: return
     UploaderPlugin.changed()
-    if (audio.length() >= FOREGROUND_BYTES) goForeground(audio.length())
+    val foreground = audio.length() >= FOREGROUND_BYTES && goForeground(audio.length())
 
     val boundary = "aution-" + UUID.randomUUID()
     val head = ("--$boundary\r\nContent-Disposition: form-data; name=\"meta\"\r\n\r\n" + entry.meta + "\r\n" +
@@ -118,11 +118,26 @@ class UploadWorker(context: Context, params: WorkerParameters) : Worker(context,
         out.write(head)
         audio.inputStream().use { input ->
           val buffer = ByteArray(64 * 1024)
+          val total = audio.length().coerceAtLeast(1)
+          var sent = 0L
+          var shown = 0
+          var shownAt = 0L
           while (true) {
             if (isStopped) throw IOException("stopped")
             val read = input.read(buffer)
             if (read < 0) break
             out.write(buffer, 0, read)
+            sent += read
+            // Each whole percent, at most twice a second: the library shows it, and so does the notification.
+            val percent = ((sent * 100) / total).toInt().coerceIn(0, 99)
+            val now = System.currentTimeMillis()
+            if (percent > shown && now - shownAt >= 500) {
+              shown = percent
+              shownAt = now
+              Outbox.update(context, entry.id) { it.copy(progress = percent) }
+              UploaderPlugin.changed()
+              if (foreground) showProgress(audio.length(), percent)
+            }
           }
         }
         out.write(tail)
@@ -176,25 +191,36 @@ class UploadWorker(context: Context, params: WorkerParameters) : Worker(context,
    * 10-minute limit for background work nor freezes the app during a long upload. Android may refuse when the app is
    * not on screen (Android 12+); the upload then carries on as ordinary background work.
    */
-  private fun goForeground(bytes: Long) {
+  /** Returns true when Android let this work run in the foreground. */
+  private fun goForeground(bytes: Long): Boolean = try {
+    val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && manager.getNotificationChannel(CHANNEL) == null) {
+      manager.createNotificationChannel(NotificationChannel(CHANNEL, "Uploads", NotificationManager.IMPORTANCE_LOW))
+    }
+    val notification = progressNotification(bytes, 0)
+    val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) ForegroundInfo(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+      else ForegroundInfo(NOTIFICATION_ID, notification)
+    setForegroundAsync(info).get()
+    true
+  } catch (_: Exception) {
+    false // not allowed right now: carry on in the background
+  }
+
+  private fun progressNotification(bytes: Long, percent: Int) = NotificationCompat.Builder(applicationContext, CHANNEL)
+    .setSmallIcon(android.R.drawable.stat_sys_upload)
+    .setContentTitle("Uploading a recording")
+    .setContentText("%d%% of %.0f MB".format(percent, bytes / 1048576.0))
+    .setOngoing(true)
+    .setSilent(true)
+    .setOnlyAlertOnce(true)
+    .setProgress(100, percent, false)
+    .build()
+
+  private fun showProgress(bytes: Long, percent: Int) {
     try {
       val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && manager.getNotificationChannel(CHANNEL) == null) {
-        manager.createNotificationChannel(NotificationChannel(CHANNEL, "Uploads", NotificationManager.IMPORTANCE_LOW))
-      }
-      val notification = NotificationCompat.Builder(applicationContext, CHANNEL)
-        .setSmallIcon(android.R.drawable.stat_sys_upload)
-        .setContentTitle("Uploading a recording")
-        .setContentText("%.0f MB".format(bytes / 1048576.0))
-        .setOngoing(true)
-        .setSilent(true)
-        .setProgress(0, 0, true)
-        .build()
-      val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) ForegroundInfo(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-        else ForegroundInfo(NOTIFICATION_ID, notification)
-      setForegroundAsync(info).get()
+      manager.notify(NOTIFICATION_ID, progressNotification(bytes, percent))
     } catch (_: Exception) {
-      // Not allowed right now: carry on in the background.
     }
   }
 }

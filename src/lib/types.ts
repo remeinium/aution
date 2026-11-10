@@ -28,6 +28,8 @@ export interface Note {
   remoteTitle?: string
   /** Opens this note's folder in the person's Google Drive. Only when the server keeps notes there. */
   driveUrl?: string
+  /** Percent of the audio sent so far while it uploads (Android app only; the browser cannot measure it). */
+  uploadProgress?: number
   /** Battery percent when the recording started and stopped (native app only), to measure what recording costs. */
   battery?: { start: number | null; end: number | null }
 }

@@ -3,13 +3,13 @@ import { formatUntil } from './format'
 import { isConfigured } from './endpoint'
 import type { Note, Settings } from './types'
 
-export interface StatusView { icon: LucideIcon; text: string; detail?: string; tone: 'neutral' | 'good' | 'attention'; spinning?: boolean }
+export interface StatusView { icon: LucideIcon; text: string; detail?: string; tone: 'neutral' | 'good' | 'attention'; spinning?: boolean; /** Upload progress, shown in green after the text. */ percent?: number }
 
 /** Words first: state is never carried by color or icon alone. */
 export function describeStatus(note: Note, settings: Settings, now: number, online: boolean): StatusView {
   switch (note.status) {
     case 'recording': return { icon: Mic, text: 'Recording in progress', tone: 'neutral' }
-    case 'uploading': return { icon: LoaderCircle, text: 'Uploading', tone: 'neutral', spinning: true }
+    case 'uploading': return { icon: LoaderCircle, text: 'Uploading', tone: 'neutral', spinning: true, ...(note.uploadProgress !== undefined ? { percent: Math.max(0, Math.min(100, Math.round(note.uploadProgress))) } : {}) }
     case 'uploaded': return { icon: Check, text: note.audioRemoved ? 'Uploaded · audio removed from this device' : 'Uploaded', tone: 'good' }
     case 'failed': return { icon: CircleAlert, text: 'Needs attention', detail: note.lastError ?? undefined, tone: 'attention' }
     default:

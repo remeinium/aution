@@ -163,7 +163,7 @@ class UploaderPlugin(private val activity: Activity) : Plugin(activity) {
     for (entry in Outbox.all(activity)) {
       list.put(JSObject().put("id", entry.id).put("meta", entry.meta).put("state", entry.state).put("attempts", entry.attempts)
         .put("lastError", entry.lastError ?: JSONObject.NULL).put("nextAttemptAt", entry.nextAttemptAt)
-        .put("uploadedAt", entry.uploadedAt ?: JSONObject.NULL))
+        .put("uploadedAt", entry.uploadedAt ?: JSONObject.NULL).put("progress", entry.progress))
     }
     val staged = JSArray()
     for (id in Outbox.stagedOnly(activity)) staged.put(id)
