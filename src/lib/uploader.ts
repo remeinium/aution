@@ -1,6 +1,6 @@
 import { getAudio, getNote, listNotes, removeAudio, updateNote } from './db'
 import { notifyChanged } from './changes'
-import { normalizeEndpoint } from './endpoint'
+import { isSignedIn, normalizeEndpoint } from './endpoint'
 import { errorMessage } from './errors'
 import { extensionFor } from './mime'
 import { ServerError, authHeaders, editOnServer } from './server'
@@ -108,7 +108,7 @@ export interface FlushOptions {
 export async function flushUploads(options: FlushOptions = {}): Promise<void> {
   const run = async () => {
     const settings = await loadSettings()
-    if (!normalizeEndpoint(settings.endpoint)) return
+    if (!isSignedIn(settings)) return // the server refuses notes without a token; signing in kicks the uploads again
     if (!settings.autoUpload && !options.force) return
     const tried = new Set<string>()
     for (;;) {

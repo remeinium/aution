@@ -277,6 +277,10 @@ allows). The uploader adds `FOREGROUND_SERVICE_DATA_SYNC` for long uploads (abov
   headers take over 300 s (undici's `headersTimeout`), and Whisper answers only when the whole file is done. The
   15-minute note failed with "fetch failed" after 5 m 8 s. The transcription request now uses an undici `Agent`
   without those timeouts; its own timeout grows with the file (15 min + 2 min per MB).
+- **Signed out (fixed 2026-11-12).** After a reinstall the app was not signed in, yet new notes showed "Uploading"
+  for hours: they were queued, and the worker, which has no token then, sent nothing and said so only in a field
+  the "Uploading" label did not show. Now nothing is queued while signed out, queued notes show "Saved on this
+  device — Sign in to upload.", and an "Uploading" note shows the last problem when it is being sent again.
 - Renames and tag changes after the upload are still sent by the page (`flushEdits`), so only while the app is open.
 - Turning "Upload automatically" off does not stop notes already handed to the outbox.
 - Wi-Fi only, reboot, a 401 after signing out on the server, and a large file: *untested on the phone*.

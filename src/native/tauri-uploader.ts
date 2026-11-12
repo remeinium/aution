@@ -10,7 +10,7 @@
 import { addPluginListener, invoke } from '@tauri-apps/api/core'
 import { notifyChanged } from '../lib/changes'
 import { getAudio, getNote, listNotes, onNoteDeleted, removeAudio, updateNote } from '../lib/db'
-import { normalizeEndpoint } from '../lib/endpoint'
+import { isSignedIn, normalizeEndpoint } from '../lib/endpoint'
 import { extensionFor } from '../lib/mime'
 import { loadSettings } from '../lib/settings'
 import type { FlushOptions } from '../lib/uploader'
@@ -33,7 +33,8 @@ export async function reconcile(): Promise<Outbox> {
   for (const upload of uploads) {
     const note = await getNote(upload.id)
     if (!note) { await call('forget', { id: upload.id }); continue } // removed from this device meanwhile
-    const patch = patchFromUpload(note, upload, waitingFor, now)
+    // Signed out: the worker cannot send anything (it has no token), so a queued note waits for a sign-in.
+    const patch = patchFromUpload(note, upload, isSignedIn(settings) ? waitingFor : 'signin', now)
     if (patch) { await updateNote(upload.id, patch); changed = true }
     if (upload.state === 'done') {
       if (settings.keepAfterUpload === 0 && !note.audioRemoved) {
@@ -88,7 +89,7 @@ async function pass(options: FlushOptions): Promise<void> {
   const settings = await loadSettings()
   const endpoint = normalizeEndpoint(settings.endpoint)
   const { queued, staged } = await reconcile()
-  if (!endpoint) return
+  if (!endpoint || !isSignedIn(settings)) return // nothing can go before a sign-in; signing in kicks the uploads again
   if (settings.autoUpload || options.force) {
     for (const note of await listNotes()) {
       const entry = queued.get(note.id)

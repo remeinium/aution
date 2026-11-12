@@ -22,7 +22,7 @@ export interface NativeUpload {
 }
 
 /** What waiting uploads are held up by: no connection, or only mobile data with "Wi-Fi only" on. */
-export type WaitingFor = 'network' | 'wifi' | null
+export type WaitingFor = 'network' | 'wifi' | 'signin' | null
 
 /** True when this note should be handed to the native outbox now (same choice as the web uploader's flush). */
 export function shouldHandOver(note: Note, inOutbox: boolean, options: FlushOptions): boolean {
@@ -34,7 +34,7 @@ export function shouldHandOver(note: Note, inOutbox: boolean, options: FlushOpti
   return note.status === 'failed' && options.force === true
 }
 
-const waitingMessage = (waitingFor: WaitingFor) => (waitingFor === 'wifi' ? 'Waiting for Wi-Fi.' : 'Waiting for a connection.')
+const waitingMessage = (waitingFor: WaitingFor) => (waitingFor === 'signin' ? 'Sign in to upload.' : waitingFor === 'wifi' ? 'Waiting for Wi-Fi.' : 'Waiting for a connection.')
 
 /** The note fields that show where its upload stands. Returns null when nothing changes. */
 export function patchFromUpload(note: Note, upload: NativeUpload, waitingFor: WaitingFor, now: number): Partial<Note> | null {

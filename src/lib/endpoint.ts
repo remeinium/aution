@@ -39,6 +39,11 @@ export function isConfigured(settings: Pick<Settings, 'endpoint'>): boolean {
   return normalizeEndpoint(settings.endpoint) !== ''
 }
 
+/** Signed in: a server and this device's token. Uploads need both (the server refuses notes without a token). */
+export function isSignedIn(settings: Pick<Settings, 'endpoint' | 'token'>): boolean {
+  return isConfigured(settings) && settings.token.trim() !== ''
+}
+
 /** `#/pair?e=<endpoint>&t=<token>&n=<device name>`. The fragment never reaches a server. */
 export function parsePairing(hash: string): { endpoint: string; token: string; deviceName: string } | null {
   const match = /^#\/?pair\?(.*)$/.exec(hash)

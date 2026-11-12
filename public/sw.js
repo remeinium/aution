@@ -174,7 +174,8 @@ async function flush(options) {
     try { db = await openDb() } catch { return }
     try {
       const settingsRow = await wrap(db.transaction('kv').objectStore('kv').get('settings'))
-      if (!settingsRow || !normalizeEndpoint(settingsRow.endpoint) || settingsRow.autoUpload === false) return
+      // Signed out (no token): the server would refuse every note, so wait for a sign-in, like the page does.
+      if (!settingsRow || !normalizeEndpoint(settingsRow.endpoint) || !settingsRow.token || settingsRow.autoUpload === false) return
       const tried = new Set()
       for (;;) {
         const now = Date.now()

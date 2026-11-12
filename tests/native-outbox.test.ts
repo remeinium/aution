@@ -42,6 +42,9 @@ describe('patchFromUpload', () => {
     expect(patchFromUpload(note(), upload({ attempts: 2, lastError: 'No connection to the server.', nextAttemptAt: NOW + 10_000 }), null, NOW))
       .toEqual({ status: 'local', lastError: 'No connection to the server.', nextAttemptAt: NOW + 10_000, attempts: 2 })
   })
+  it('says a queued note waits for a sign-in when signed out', () => {
+    expect(patchFromUpload(note(), upload(), 'signin', NOW)).toMatchObject({ status: 'local', lastError: 'Sign in to upload.' })
+  })
   it('says what it is waiting for when there is no usable network', () => {
     expect(patchFromUpload(note(), upload(), 'wifi', NOW)).toMatchObject({ status: 'local', lastError: 'Waiting for Wi-Fi.' })
     expect(patchFromUpload(note(), upload(), 'network', NOW)).toMatchObject({ status: 'local', lastError: 'Waiting for a connection.' })
@@ -96,8 +99,26 @@ describe('upload percent in the status label', () => {
   it('shows the percent only while a note is being sent, as words plus a number', async () => {
     const { describeStatus } = await import('../src/lib/statusView')
     const { DEFAULT_SETTINGS } = await import('../src/lib/types')
-    expect(describeStatus(note({ status: 'uploading', uploadProgress: 42.4 }), DEFAULT_SETTINGS, NOW, true)).toMatchObject({ text: 'Uploading', percent: 42 })
-    expect(describeStatus(note({ status: 'uploading' }), DEFAULT_SETTINGS, NOW, true).percent).toBeUndefined()
-    expect(describeStatus(note({ status: 'uploaded', uploadProgress: 100 }), DEFAULT_SETTINGS, NOW, true).percent).toBeUndefined()
+    const signedIn = { ...DEFAULT_SETTINGS, endpoint: 'https://aution.example.com', token: 'device-token' }
+    expect(describeStatus(note({ status: 'uploading', uploadProgress: 42.4 }), signedIn, NOW, true)).toMatchObject({ text: 'Uploading', percent: 42 })
+    expect(describeStatus(note({ status: 'uploading' }), signedIn, NOW, true).percent).toBeUndefined()
+    expect(describeStatus(note({ status: 'uploaded', uploadProgress: 100 }), signedIn, NOW, true).percent).toBeUndefined()
+  })
+
+  it('never says "Uploading" while signed out: it says what is needed (seen on a phone after a reinstall)', async () => {
+    const { describeStatus } = await import('../src/lib/statusView')
+    const { DEFAULT_SETTINGS } = await import('../src/lib/types')
+    const signedOut = { ...DEFAULT_SETTINGS, endpoint: 'https://aution.example.com', token: '' }
+    for (const status of ['uploading', 'local'] as const) {
+      expect(describeStatus(note({ status }), signedOut, NOW, true)).toMatchObject({ text: 'Saved on this device', detail: 'Sign in to upload.' })
+    }
+    expect(describeStatus(note({ status: 'local' }), DEFAULT_SETTINGS, NOW, true)).toMatchObject({ detail: 'Connect a server in Settings to upload.' })
+  })
+
+  it('shows why a note is being sent again', async () => {
+    const { describeStatus } = await import('../src/lib/statusView')
+    const { DEFAULT_SETTINGS } = await import('../src/lib/types')
+    const signedIn = { ...DEFAULT_SETTINGS, endpoint: 'https://aution.example.com', token: 'device-token' }
+    expect(describeStatus(note({ status: 'uploading', lastError: 'No connection to the server.' }), signedIn, NOW, true)).toMatchObject({ text: 'Uploading', detail: 'No connection to the server.' })
   })
 })

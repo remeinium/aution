@@ -1,6 +1,6 @@
 import { Check, CircleAlert, CloudOff, CloudUpload, HardDrive, LoaderCircle, Mic, type LucideIcon } from 'lucide-react'
 import { formatUntil } from './format'
-import { isConfigured } from './endpoint'
+import { isConfigured, isSignedIn } from './endpoint'
 import type { Note, Settings } from './types'
 
 export interface StatusView { icon: LucideIcon; text: string; detail?: string; tone: 'neutral' | 'good' | 'attention'; spinning?: boolean; /** Upload progress, shown in green after the text. */ percent?: number }
@@ -9,14 +9,25 @@ export interface StatusView { icon: LucideIcon; text: string; detail?: string; t
 export function describeStatus(note: Note, settings: Settings, now: number, online: boolean): StatusView {
   switch (note.status) {
     case 'recording': return { icon: Mic, text: 'Recording in progress', tone: 'neutral' }
-    case 'uploading': return { icon: LoaderCircle, text: 'Uploading', tone: 'neutral', spinning: true, ...(note.uploadProgress !== undefined ? { percent: Math.max(0, Math.min(100, Math.round(note.uploadProgress))) } : {}) }
+    case 'uploading':
+      // Signed out: nothing can be sent, so do not claim it is (a queued note says what it needs instead).
+      if (!isSignedIn(settings)) return signInFirst(settings)
+      if (note.uploadProgress !== undefined) return { icon: LoaderCircle, text: 'Uploading', tone: 'neutral', spinning: true, percent: Math.max(0, Math.min(100, Math.round(note.uploadProgress))) }
+      // About to be sent again: say what went wrong last time, if anything did.
+      return { icon: LoaderCircle, text: 'Uploading', tone: 'neutral', spinning: true, ...(note.lastError ? { detail: note.lastError } : {}) }
     case 'uploaded': return { icon: Check, text: note.audioRemoved ? 'Uploaded · audio removed from this device' : 'Uploaded', tone: 'good' }
     case 'failed': return { icon: CircleAlert, text: 'Needs attention', detail: note.lastError ?? undefined, tone: 'attention' }
     default:
-      if (!isConfigured(settings)) return { icon: HardDrive, text: 'Saved on this device', detail: 'Connect a server in Settings to upload.', tone: 'neutral' }
+      if (!isSignedIn(settings)) return signInFirst(settings)
       if (!settings.autoUpload) return { icon: HardDrive, text: 'Saved on this device', detail: 'Automatic upload is off.', tone: 'neutral' }
       if (note.nextAttemptAt && note.nextAttemptAt > now) return { icon: CloudOff, text: `Will retry in ${formatUntil(note.nextAttemptAt - now)}`, detail: note.lastError ?? undefined, tone: 'neutral' }
       if (!online) return { icon: CloudOff, text: 'Waiting for a connection', tone: 'neutral' }
       return { icon: CloudUpload, text: 'Waiting to upload', tone: 'neutral' }
   }
+}
+
+function signInFirst(settings: Settings): StatusView {
+  return isConfigured(settings)
+    ? { icon: HardDrive, text: 'Saved on this device', detail: 'Sign in to upload.', tone: 'neutral' }
+    : { icon: HardDrive, text: 'Saved on this device', detail: 'Connect a server in Settings to upload.', tone: 'neutral' }
 }
