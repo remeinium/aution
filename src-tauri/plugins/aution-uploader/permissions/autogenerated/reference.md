@@ -1,6 +1,6 @@
 ## Default Permission
 
-What the app's own pages need for background uploads: hand notes to the native outbox, read their state, and keep the device token in the Android Keystore.
+What the app's own pages need for background uploads: hand notes to the native outbox, read their state, keep the device token in the Android Keystore, and install app updates.
 
 #### This default permission set includes the following:
 
@@ -12,6 +12,7 @@ What the app's own pages need for background uploads: hand notes to the native o
 - `allow-forget`
 - `allow-secret`
 - `allow-background`
+- `allow-update`
 - `allow-register-listener`
 - `allow-remove-listener`
 
@@ -254,6 +255,32 @@ Enables the stage command without any pre-configured scope.
 <td>
 
 Denies the stage command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`aution-uploader:allow-update`
+
+</td>
+<td>
+
+Enables the update command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`aution-uploader:deny-update`
+
+</td>
+<td>
+
+Denies the update command without any pre-configured scope.
 
 </td>
 </tr>

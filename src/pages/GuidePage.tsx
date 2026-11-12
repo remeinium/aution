@@ -63,11 +63,12 @@ export function GuidePage() {
         <h2 id="g3">3. Your notes</h2>
         <p>The <strong>Library</strong> lists everything you recorded. Tap a note to play it, rename it, add tags, or open it in Google Drive.</p>
         <Shot file="library.png" alt="The Library with three notes, one of them named by ChatGPT" />
+        <p>Under each note, <strong>View transcript</strong> opens what was said, word for word, on its own screen. Tap a time to play the recording from there; <strong>Back</strong> returns to the Library. The transcript is written on your server a minute or two after the note uploads (longer for long recordings).</p>
         <p>A note you do not name gets a title from the assistant or the model a few seconds after it uploads. Your own name always wins: once you type one, nobody replaces it.</p>
         <Shot file="note.png" alt="An opened note with its title, tags and an Open in Google Drive button" />
         <ul>
           <li><strong>Remove from this device</strong> only clears the copy on this phone.</li>
-          <li><strong>Delete everywhere</strong> asks twice and removes the recording, the transcript and everything made from it, for good.</li>
+          <li><strong>Delete everywhere</strong> asks twice and removes the recording, the transcript and everything made from it, for good, from your server and this phone.</li>
         </ul>
       </section>
 
@@ -121,7 +122,7 @@ bearer_token_env_var = "AUTION_KEY"`}</pre>
 
       <section className="settings-section guide-section" id="guide-install" aria-labelledby="g8">
         <h2 id="g8">8. Put it on your phone</h2>
-        <p><strong>Android: the aution app.</strong> It keeps recording with the screen off and uploads in the background, also after the phone restarts. In Settings, under <strong>Android app</strong>, tap <strong>Download the Android app</strong>, then open the downloaded file and allow the install. A new version installs the same way, over the old one: your notes stay.</p>
+        <p><strong>Android: the aution app.</strong> It keeps recording with the screen off and uploads in the background, also after the phone restarts. In Settings, under <strong>Android app</strong>, tap <strong>Download the Android app</strong>, then open the downloaded file and allow the install. When a new version is out, the app shows a banner with an <strong>Update</strong> button: tap it, then <strong>Install</strong>. The first time, Android asks you to allow installs from aution. Your notes stay.</p>
         <p>On <strong>Xiaomi, Redmi and POCO</strong> phones, turn on <strong>Autostart</strong> for aution, or recordings only upload while the app is open. aution shows a <strong>Turn on Autostart</strong> button at the top of the Library until it is on: tap it and switch aution on.</p>
         <Shot file="autostart-notice.png" alt="aution's Uploads settings: To upload while aution is closed, this phone needs its Autostart switch on, with a Turn on Autostart button" />
         <Shot file="autostart.png" alt="The phone's Background autostart screen with the switch next to aution turned on" />

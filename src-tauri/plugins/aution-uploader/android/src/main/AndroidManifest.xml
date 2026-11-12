@@ -7,6 +7,9 @@
          freezes the app in the middle of it. Android 14 requires the service type and its permission. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- The in-app update: open Android's installer for a newer aution downloaded from GitHub (Android asks the person
+         once to allow installs from aution; the installer only accepts the same signing key). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- WorkManager adds the rest itself (network state for "connected" / "Wi-Fi only", boot completed to reschedule
          after a restart, wake lock while a worker runs). -->
 
@@ -16,5 +19,15 @@
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync"
             tools:node="merge" />
+        <!-- Hands the downloaded update (cacheDir/updates) to the installer. -->
+        <provider
+            android:name="com.remeinium.aution.uploader.UpdateFileProvider"
+            android:authorities="${applicationId}.updates"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/aution_update_paths" />
+        </provider>
     </application>
 </manifest>

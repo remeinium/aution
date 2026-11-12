@@ -115,3 +115,17 @@ export async function fetchServerNotes(settings: Credentials, fetchImpl: Fetch =
     })
   } catch { return null }
 }
+
+export type TranscriptResult =
+  | { status: 'ready'; text: string; language: string | null; durationSec: number | null; suspectedSilence: boolean; segments: Array<{ start: number; end: number; text: string }> }
+  | { status: 'pending'; error: string | null }
+  | { status: 'failed'; error: string | null }
+  | { status: 'missing' }
+
+/** A note's transcript: ready, still being written (or failed, with why), or not on the server. */
+export async function fetchTranscript(settings: Credentials, id: string, fetchImpl: Fetch = fetch): Promise<TranscriptResult> {
+  const response = await call(settings, `/v1/notes/${encodeURIComponent(id)}/transcript`, { method: 'GET' }, fetchImpl)
+  if (response.status === 404) return { status: 'missing' }
+  if (response.status !== 200 && response.status !== 202) throw refused(response)
+  return (await response.json()) as TranscriptResult
+}

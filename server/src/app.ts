@@ -177,6 +177,24 @@ export function createApp(config: Config, options: PipelineOptions = {}, authOpt
   app.get('/v1/notes', async (_req, res, next) => {
     try { res.setHeader('Cache-Control', 'no-store'); res.json({ notes: await (await tenantOf(res)).brain.namesForApp() }) } catch (error) { next(error) }
   })
+  // A note's transcript for the app's transcript screen. 200 with the words; 202 while it is still being written
+  // (or waiting for a retry), with the last problem; 404 when the server does not have the note.
+  app.get('/v1/notes/:id/transcript', async (req, res, next) => {
+    try {
+      const id = String(req.params.id)
+      res.setHeader('Cache-Control', 'no-store')
+      if (!UUID.test(id)) { res.status(404).json({ status: 'missing' }); return }
+      const { store } = (await tenantOf(res)).brain
+      if (!(await store.has(id))) { res.status(404).json({ status: 'missing' }); return }
+      const transcript = await store.transcript(id)
+      if (transcript) {
+        res.json({ status: 'ready', text: transcript.text, language: transcript.language, durationSec: transcript.durationSec, suspectedSilence: transcript.suspectedSilence, segments: transcript.segments.map(({ start, end, text }) => ({ start, end, text })) })
+        return
+      }
+      const state = await store.state(id)
+      res.status(202).json({ status: state.failed ? 'failed' : 'pending', error: state.lastError ?? null })
+    } catch (error) { next(error) }
+  })
   // Whether this device's note is stored, so an app can skip re-sending a long recording whose upload went through but
   // whose answer was lost (a dropped connection after the server had it all).
   app.get('/v1/notes/:id', async (req, res, next) => {

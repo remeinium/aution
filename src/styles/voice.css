@@ -219,3 +219,20 @@ a.secondary-button, a.primary-button { text-decoration: none; }
 .chatgpt-sub { margin: 22px 0 6px; font-size: 15px; font-weight: 600; letter-spacing: 0; }
 .chatgpt textarea.snippet { width: 100%; box-sizing: border-box; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.5; padding: 12px; border-radius: 12px; border: 1px solid var(--color-border); background: var(--color-canvas); color: var(--color-text); }
 .guide-section pre.snippet-block { white-space: pre-wrap; word-break: break-all; padding: 12px; border-radius: 12px; border: 1px solid var(--color-border); background: var(--color-canvas); font-size: 12px; line-height: 1.5; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* "View transcript" under each note, and the transcript screen. */
+.transcript-link { display: inline-block; margin: -6px 0 12px 2px; }
+.back-link { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 18px; padding: 6px 0; background: none; border: 0; cursor: pointer; }
+.transcript-player { width: 100%; margin: 18px 0 8px; }
+.transcript { margin-top: 18px; }
+.transcript-text { white-space: pre-wrap; line-height: 1.7; color: var(--color-text); }
+.transcript-segments { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 14px; }
+.transcript-segments li { display: grid; grid-template-columns: 4.5em 1fr; gap: 12px; align-items: baseline; }
+.transcript-segments p { margin: 0; line-height: 1.65; color: var(--color-text); overflow-wrap: anywhere; }
+.segment-time { color: var(--color-text-muted); font-size: 12px; font-variant-numeric: tabular-nums; background: none; border: 0; padding: 0; text-align: left; cursor: pointer; }
+button.segment-time:hover { color: var(--color-text); text-decoration: underline; }
+
+/* The Android app's "new version" banner, under the top bar. */
+.update-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; padding: 12px 16px; border: 1px solid #2f4a36; border-radius: var(--radius-card); background: #14211a; color: var(--color-text); font-size: 13px; line-height: 1.5; }
+.update-actions { display: inline-flex; align-items: center; gap: 14px; }
+.update-banner .text-link { background: none; border: 0; cursor: pointer; padding: 0; }

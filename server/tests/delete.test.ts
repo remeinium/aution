@@ -24,6 +24,17 @@ beforeEach(async () => { dir = await tempDir(); stt = await fakeStt(); llm = awa
 afterEach(async () => { await server.stop(); await stt.close(); await llm.close(); await dir.clean() })
 
 describe('deleting a note from the server', () => {
+  it('shows the transcript to the app, and "Delete everywhere" removes it with the recording', async () => {
+    await upload(server.base)
+    await settled(NOTE_ID)
+    const ready = await fetch(`${server.base}/v1/notes/${NOTE_ID}/transcript`, { headers: auth })
+    expect(ready.status).toBe(200)
+    expect(await ready.json()).toMatchObject({ status: 'ready', text: TRANSCRIPT })
+    expect((await remove(NOTE_ID)).status).toBe(204)
+    expect((await fetch(`${server.base}/v1/notes/${NOTE_ID}/transcript`, { headers: auth })).status).toBe(404)
+    expect(exists('inbox', NOTE_ID, 'transcript.json')).toBe(false)
+  })
+
   it('removes everything about it and says so plainly', async () => {
     await upload(server.base)
     await settled(NOTE_ID)

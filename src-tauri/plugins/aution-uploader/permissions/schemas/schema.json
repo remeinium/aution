@@ -403,6 +403,18 @@
           "markdownDescription": "Denies the stage command without any pre-configured scope."
         },
         {
+          "description": "Enables the update command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-update",
+          "markdownDescription": "Enables the update command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the update command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-update",
+          "markdownDescription": "Denies the update command without any pre-configured scope."
+        },
+        {
           "description": "Enables the uploads command without any pre-configured scope.",
           "type": "string",
           "const": "allow-uploads",
@@ -415,10 +427,10 @@
           "markdownDescription": "Denies the uploads command without any pre-configured scope."
         },
         {
-          "description": "What the app's own pages need for background uploads: hand notes to the native outbox, read their state, and keep the device token in the Android Keystore.\n#### This default permission set includes:\n\n- `allow-stage`\n- `allow-adopt`\n- `allow-enqueue`\n- `allow-schedule`\n- `allow-uploads`\n- `allow-forget`\n- `allow-secret`\n- `allow-background`\n- `allow-register-listener`\n- `allow-remove-listener`",
+          "description": "What the app's own pages need for background uploads: hand notes to the native outbox, read their state, keep the device token in the Android Keystore, and install app updates.\n#### This default permission set includes:\n\n- `allow-stage`\n- `allow-adopt`\n- `allow-enqueue`\n- `allow-schedule`\n- `allow-uploads`\n- `allow-forget`\n- `allow-secret`\n- `allow-background`\n- `allow-update`\n- `allow-register-listener`\n- `allow-remove-listener`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "What the app's own pages need for background uploads: hand notes to the native outbox, read their state, and keep the device token in the Android Keystore.\n#### This default permission set includes:\n\n- `allow-stage`\n- `allow-adopt`\n- `allow-enqueue`\n- `allow-schedule`\n- `allow-uploads`\n- `allow-forget`\n- `allow-secret`\n- `allow-background`\n- `allow-register-listener`\n- `allow-remove-listener`"
+          "markdownDescription": "What the app's own pages need for background uploads: hand notes to the native outbox, read their state, keep the device token in the Android Keystore, and install app updates.\n#### This default permission set includes:\n\n- `allow-stage`\n- `allow-adopt`\n- `allow-enqueue`\n- `allow-schedule`\n- `allow-uploads`\n- `allow-forget`\n- `allow-secret`\n- `allow-background`\n- `allow-update`\n- `allow-register-listener`\n- `allow-remove-listener`"
         }
       ]
     }

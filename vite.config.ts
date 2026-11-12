@@ -50,6 +50,8 @@ function brand(): Plugin {
 // https://vite.dev/config/
 export default defineConfig({
   base: './',
+  // The version in package.json, so the app (upload metadata, the update check) never carries a stale copy.
+  define: { __APP_VERSION__: JSON.stringify(JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version) },
   plugins: [react(), brand(), serviceWorkerManifest()],
   build: { target: 'es2023' },
 })

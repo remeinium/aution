@@ -122,3 +122,33 @@ describe('upload percent in the status label', () => {
     expect(describeStatus(note({ status: 'uploading', lastError: 'No connection to the server.' }), signedIn, NOW, true)).toMatchObject({ text: 'Uploading', detail: 'No connection to the server.' })
   })
 })
+
+describe('the in-app update check', () => {
+  it('compares versions as numbers', async () => {
+    const { isNewer } = await import('../src/native/update')
+    expect(isNewer('0.2.10', '0.2.9')).toBe(true)
+    expect(isNewer('0.3.0', '0.2.9')).toBe(true)
+    expect(isNewer('0.2.2', '0.2.2')).toBe(false)
+    expect(isNewer('0.2.1', '0.2.2')).toBe(false)
+    expect(isNewer('v0.3.0', '0.2.2')).toBe(false)
+    expect(isNewer('0.3.0-beta', '0.2.2')).toBe(false)
+  })
+
+  it('takes the APK only from this repository’s release downloads', async () => {
+    const { releaseFrom } = await import('../src/native/update')
+    const asset = (name: string, url: string) => ({ name, browser_download_url: url })
+    expect(releaseFrom({ tag_name: 'v0.2.3', html_url: 'https://github.com/remeinium/aution/releases/tag/v0.2.3', assets: [asset('aution-0.2.3.apk', 'https://github.com/remeinium/aution/releases/download/v0.2.3/aution-0.2.3.apk'), asset('aution.apk', 'https://github.com/remeinium/aution/releases/download/v0.2.3/aution.apk')] }))
+      .toEqual({ version: '0.2.3', url: 'https://github.com/remeinium/aution/releases/download/v0.2.3/aution.apk', notesUrl: 'https://github.com/remeinium/aution/releases/tag/v0.2.3' })
+    expect(releaseFrom({ tag_name: 'v0.2.3', assets: [asset('aution.apk', 'https://evil.example/aution.apk')] })).toBeNull()
+    expect(releaseFrom({ tag_name: 'nightly', assets: [asset('aution.apk', 'https://github.com/remeinium/aution/releases/download/nightly/aution.apk')] })).toBeNull()
+    expect(releaseFrom({})).toBeNull()
+  })
+
+  it('uses the version from package.json, not a copy', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { APP_VERSION } = await import('../src/lib/types')
+    // Vitest does not run the Vite define, so this is the fallback; the build test below checks the real value.
+    expect(APP_VERSION).toBe('0.0.0')
+    expect(readFileSync('vite.config.ts', 'utf8')).toContain('__APP_VERSION__')
+  })
+})

@@ -12,13 +12,18 @@ import { GuidePage } from './pages/GuidePage'
 import { LibraryPage } from './pages/LibraryPage'
 import { RecordPage } from './pages/RecordPage'
 import { SettingsPage } from './pages/SettingsPage'
+import { TranscriptPage } from './pages/TranscriptPage'
+import { UpdateBanner } from './native/UpdateBanner'
 
 interface InstallEvent extends Event { prompt(): Promise<void>; userChoice: Promise<{ outcome: string }> }
 
 function currentPage(): Page {
   const name = window.location.hash.replace(/^#\/?/, '').split('?')[0]
+  if (/^transcript\/[0-9a-f-]{36}$/i.test(name)) return 'transcript'
   return name === 'library' || name === 'settings' || name === 'guide' ? name : 'record'
 }
+
+const transcriptId = () => window.location.hash.replace(/^#\/?transcript\//, '').split('?')[0]
 
 function Shell() {
   const { settings, update } = useSettings()
@@ -96,11 +101,13 @@ function Shell() {
 
   return <>
     <TopNav current={page} waiting={waiting} />
+    <UpdateBanner />
     {!online && <div className="offline-strip" role="status"><CloudOff size={14} aria-hidden="true" />You’re offline. Notes are saved on this device and upload when you’re back.</div>}
     {page === 'record' && <RecordPage />}
     {page === 'library' && <LibraryPage />}
     {page === 'settings' && <SettingsPage installPrompt={installPrompt} />}
     {page === 'guide' && <GuidePage />}
+    {page === 'transcript' && <TranscriptPage key={transcriptId()} id={transcriptId()} />}
   </>
 }
 

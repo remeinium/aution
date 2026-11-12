@@ -67,3 +67,16 @@ describe('long recordings', () => {
     expect((await upload(server.base, { id: big, audio: new Uint8Array(40 * 1024 * 1024) })).status).toBe(201)
   })
 })
+
+describe('the transcript screen in the app', () => {
+  it('answers 202 while there is no transcript yet, 404 for a note it does not have, and needs the token', async () => {
+    const id = '88888888-8888-4888-8888-888888888888'
+    const auth = { Authorization: 'Bearer test-ingest-token-123' }
+    expect((await fetch(`${server.base}/v1/notes/${id}/transcript`, { headers: auth })).status).toBe(404)
+    expect((await upload(server.base, { id })).status).toBe(201)
+    const pending = await fetch(`${server.base}/v1/notes/${id}/transcript`, { headers: auth })
+    expect(pending.status).toBe(202) // this test server transcribes nothing (no worker)
+    expect(await pending.json()).toMatchObject({ status: 'pending' })
+    expect((await fetch(`${server.base}/v1/notes/${id}/transcript`)).status).toBe(401)
+  })
+})

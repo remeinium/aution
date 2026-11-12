@@ -311,6 +311,19 @@ https://github.com/remeinium/aution/releases/tag/v0.2.0. Downloaded through the 
 **Not checked**: the download link on the live website (it appears once the website is redeployed); installing on an
 armv7 phone.
 
+### After 0.2.1: transcripts and in-app updates (0.2.2)
+
+- **View transcript** under every note opens `#/transcript/<id>`: the words from the server's new
+  `GET /v1/notes/<id>/transcript` (200 ready, 202 still being written or failed with the reason, 404 not stored), timed
+  passages that play the recording from that point when it is still on the phone, and Copy text. Back (on screen or
+  the phone's own) returns to the Library. "Delete everywhere" removes the transcript with the recording (a server test
+  checks that the transcript route answers 404 afterwards).
+- **In-app update** (Android app only): the app asks GitHub for the latest release at most every 6 hours; when it is
+  newer than the installed version, a banner offers **Update**. The app downloads the APK (progress in green), checks it
+  is this package, the announced version and signed with the same key, then opens Android's installer (adds
+  `REQUEST_INSTALL_PACKAGES` and a FileProvider for `cacheDir/updates`). Android asks once to allow installs from aution.
+- `APP_VERSION` now comes from `package.json` at build time (it was a stale copy saying 0.2.0).
+
 ### Phase 6: iOS
 
 *To be written.*

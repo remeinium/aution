@@ -76,6 +76,7 @@ export function NoteRow({ note, now, onDelete }: { note: Note; now: number; onDe
       </span>
       <ChevronDown size={16} aria-hidden="true" className="note-chevron" />
     </button>
+    <a className="text-link transcript-link" href={`#/transcript/${note.id}`}>View transcript</a>
     {open && <div className="note-detail" id={panel}>
       {note.audioRemoved
         ? <p className="hint">The audio was removed from this device after it uploaded. The server has the copy.</p>

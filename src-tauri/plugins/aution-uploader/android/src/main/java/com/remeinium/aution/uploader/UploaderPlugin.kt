@@ -34,6 +34,12 @@ class BackgroundArgs {
 }
 
 @InvokeArg
+class UpdateArgs {
+  lateinit var url: String
+  lateinit var version: String
+}
+
+@InvokeArg
 class EnqueueArgs {
   lateinit var id: String
   lateinit var meta: String
@@ -72,13 +78,15 @@ class SecretArgs {
  */
 @TauriPlugin
 class UploaderPlugin(private val activity: Activity) : Plugin(activity) {
+  private val main = Handler(Looper.getMainLooper())
+
   companion object {
     private var current: WeakReference<UploaderPlugin>? = null
-    private val main = Handler(Looper.getMainLooper())
+    private val mainLooper = Handler(Looper.getMainLooper())
 
     /** Called by the worker whenever a note's state changes; the UI reads the outbox again. */
     fun changed() {
-      main.post { current?.get()?.trigger("changed", JSObject()) }
+      mainLooper.post { current?.get()?.trigger("changed", JSObject()) }
     }
   }
 
@@ -131,6 +139,30 @@ class UploaderPlugin(private val activity: Activity) : Plugin(activity) {
       "open" -> invoke.resolve(JSObject().put("opened", Background.openAutostartSettings(activity)))
       else -> invoke.reject("Unknown action.")
     }
+  }
+
+  /**
+   * Downloads a newer release and opens Android's installer. Resolves at once; progress arrives as "update" events:
+   * `{ state: "downloading", percent }`, then `{ state: "installing" }`, `{ state: "permission" }` (the person must allow
+   * installs from this app first; the screen for it is open), or `{ state: "failed", message }`.
+   */
+  @Command
+  fun update(invoke: Invoke) {
+    val args = invoke.parseArgs(UpdateArgs::class.java)
+    if (!Updater.isAllowed(args.url, args.version)) { invoke.reject("Not an aution release download."); return }
+    invoke.resolve()
+    Thread {
+      val emit = { payload: JSObject -> main.post { trigger("update", payload) } }
+      try {
+        val apk = Updater.download(activity, args.url, args.version) { percent -> emit(JSObject().put("state", "downloading").put("percent", percent)) }
+        main.post {
+          if (Updater.canInstall(activity)) { Updater.install(activity, apk); trigger("update", JSObject().put("state", "installing")) }
+          else trigger("update", JSObject().put("state", "permission"))
+        }
+      } catch (error: Exception) {
+        emit(JSObject().put("state", "failed").put("message", error.message ?: "The download failed."))
+      }
+    }.start()
   }
 
   @Command
