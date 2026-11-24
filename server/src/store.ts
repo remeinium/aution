@@ -1,5 +1,5 @@
 import type { Digest, NoteEdits, NoteMeta, NoteState, Transcript } from './types.ts'
-import { OWNER_ID, payloadBytes, type NoteStorage, type Payload, type StoredStream } from './storage.ts'
+import { OWNER_ID, payloadBytes, type CacheTrim, type CacheUsage, type NoteStorage, type Payload, type StoredStream } from './storage.ts'
 
 const text = new TextDecoder()
 const encodeJson = (value: unknown) => new TextEncoder().encode(`${JSON.stringify(value, null, 2)}\n`)
@@ -69,6 +69,10 @@ export class Store {
 
   /** Transcribed and digested: let the backend apply its retainAudio policy. */
   releaseAudio(id: string): Promise<void> { return this.storage.releaseAudio(this.userId, id) }
+
+  /** Keeps the audio cache under the person's cap. Null for a backend that has no cache to trim. */
+  async trimCache(): Promise<CacheTrim | null> { return this.storage.trimCache ? this.storage.trimCache(this.userId) : null }
+  async cacheUsage(): Promise<CacheUsage | null> { return this.storage.cacheUsage ? this.storage.cacheUsage(this.userId) : null }
 
   /** Stores an upload. The note only exists once complete, so a crash never leaves half a note. Returns false for a repeat. */
   saveUpload(meta: NoteMeta, audio: Payload, extension: string, bytes: number = audio instanceof Uint8Array ? audio.byteLength : -1): Promise<boolean> {

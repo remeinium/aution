@@ -2,7 +2,7 @@ import { join } from 'node:path'
 import { Brain } from './brain.ts'
 import type { Config } from './config.ts'
 import { Pipeline, type PipelineOptions } from './pipeline.ts'
-import { checkUser, type NewNote, type NoteStorage, type Payload, type RetainAudio, type StoredStream } from './storage.ts'
+import { checkUser, type CacheTrim, type CacheUsage, type NewNote, type NoteStorage, type Payload, type RetainAudio, type StoredStream } from './storage.ts'
 import { OWNER_ID } from './users.ts'
 
 /**
@@ -25,6 +25,8 @@ export class ScopedStorage implements NoteStorage {
   getStream(_user: string, noteId: string, filename: string): Promise<StoredStream | null> { return this.inner.getStream(this.userId, noteId, filename) }
   deleteNote(_user: string, noteId: string): Promise<void> { return this.inner.deleteNote(this.userId, noteId) }
   releaseAudio(_user: string, noteId: string): Promise<void> { return this.inner.releaseAudio(this.userId, noteId) }
+  async trimCache(_user: string): Promise<CacheTrim> { return (await this.inner.trimCache?.(this.userId)) ?? { freedFiles: 0, freedBytes: 0, skipped: 0 } }
+  async cacheUsage(_user: string): Promise<CacheUsage> { return (await this.inner.cacheUsage?.(this.userId)) ?? { bytes: 0, files: 0 } }
   async links(_user: string): Promise<Record<string, string>> { return (await this.inner.links?.(this.userId)) ?? {} }
 }
 

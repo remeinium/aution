@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path'
 import { Readable } from 'node:stream'
 import { pipeline as pump } from 'node:stream/promises'
 import { DriveNotConnected, type DriveTokenProvider } from './drive-tokens.ts'
-import { checkFile, checkNote, checkUser, isAudioFile, payloadBytes, readAll, type NewNote, type NoteStorage, type Payload, type RetainAudio, type StoredStream } from './storage.ts'
+import { checkFile, checkNote, checkUser, isAudioFile, payloadBytes, readAll, type CacheTrim, type CacheUsage, type NewNote, type NoteStorage, type Payload, type PolicyProvider, type RetainAudio, type StoragePolicy, type StoredStream } from './storage.ts'
 import { NoteGone, UUID } from './util.ts'
 
 /**
@@ -33,6 +33,8 @@ const FIELDS = 'id,name,mimeType,size,parents,appProperties,createdTime'
 const RECENT_MS = 10 * 60_000 // Drive's search index lags; files this process wrote are trusted for this long
 const MEMO_MS = 3_000 // a note's file list is reused briefly (a rebuild reads four files per note)
 const CACHE_TTL_MS = 10 * 60_000
+const YOUNG_MS = 60 * 60_000 // a cached recording this new may still be read by the pipeline: never evicted by the size cap
+const STALE_TMP_MS = 24 * 60 * 60_000 // a half-written temp file this old is left over from a crash
 const SMALL = 5 * 1024 * 1024 // JSON at most this big goes in one multipart request
 const RATE_REASONS = new Set(['rateLimitExceeded', 'userRateLimitExceeded', 'sharingRateLimitExceeded', 'backendError'])
 
@@ -57,6 +59,11 @@ export interface DriveStorageOptions {
   /** Where audio working copies and state.json live on this machine. */
   cacheDir: string
   retainAudio?: RetainAudio
+  /**
+   * Each person's own choices (keep or drop the local audio, a size cap, trash instead of erase). Without it every
+   * user gets `retainAudio`, no cap, and a delete that erases: the behaviour from before these were configurable.
+   */
+  policy?: PolicyProvider
   apiBase?: string
   uploadBase?: string
   /** Name of the top-level folder the app creates. Never used to find it again. */
@@ -153,6 +160,7 @@ const discard = (response: Response) => response.body?.cancel().catch(() => unde
 
 export class DriveStorage implements NoteStorage {
   readonly retainAudio: RetainAudio
+  private readonly policy: PolicyProvider
   private readonly tokens: DriveTokenProvider
   private readonly cacheDir: string
   private readonly apiBase: string
@@ -177,6 +185,8 @@ export class DriveStorage implements NoteStorage {
   constructor(options: DriveStorageOptions) {
     this.retainAudio = options.retainAudio ?? 'keep'
     if (this.retainAudio !== 'keep' && this.retainAudio !== 'drop-after-digest') throw new Error('retainAudio must be "keep" or "drop-after-digest"')
+    const fallback: StoragePolicy = { retainAudio: this.retainAudio, maxCacheBytes: 0, trashOnDelete: false }
+    this.policy = options.policy ?? (() => fallback)
     this.tokens = options.tokens
     this.cacheDir = options.cacheDir
     this.apiBase = (options.apiBase ?? 'https://www.googleapis.com/drive/v3').replace(/\/+$/, '')
@@ -450,6 +460,12 @@ export class DriveStorage implements NoteStorage {
     await discard(response)
   }
 
+  /** Moves a file or folder to Drive's trash. A trashed folder takes everything in it along, and Drive empties it by itself after about 30 days. */
+  private async trash(userId: string, id: string): Promise<void> {
+    const response = await this.api(userId, 'files.trash', token => this.request(`${this.apiBase}/files/${id}`, token, { method: 'PATCH', headers: { 'Content-Type': 'application/json; charset=UTF-8' }, body: JSON.stringify({ trashed: true }) }), { accept: [404] })
+    await discard(response)
+  }
+
   private async download(userId: string, id: string): Promise<Response | null> {
     const response = await this.api(userId, 'files.get', token => this.request(`${this.apiBase}/files/${id}?alt=media`, token, {}, 10 * 60_000), { accept: [404] })
     if (response.status === 404) { await discard(response); return null }
@@ -651,7 +667,7 @@ export class DriveStorage implements NoteStorage {
     try { await pump(Readable.fromWeb(response.body as Parameters<typeof Readable.fromWeb>[0]), createWriteStream(tmp)) } catch (error) { await rm(tmp, { force: true }); throw error }
     const written = (await stat(tmp)).size
     if (entry.size !== undefined && Number(entry.size) !== written) { await rm(tmp, { force: true }); throw new DriveError('Google Drive sent a different amount of audio than it lists', 0, 'size-mismatch', true) }
-    const keep = this.retainAudio === 'keep'
+    const keep = this.policy(userId).retainAudio === 'keep'
     const path = keep ? local : tmp
     if (keep) await rename(tmp, local)
     const reader = createReadStream(path)
@@ -659,11 +675,12 @@ export class DriveStorage implements NoteStorage {
     return { stream: Readable.toWeb(reader) as unknown as ReadableStream<Uint8Array>, size: written }
   }
 
-  private async removeAll(userId: string, noteId: string, files: DriveFile[]): Promise<void> {
+  /** `trash` moves to Drive's trash (a person's own delete); otherwise erases (this app's own leftovers and rollbacks). */
+  private async removeAll(userId: string, noteId: string, files: DriveFile[], trash = false): Promise<void> {
     const folders = new Set(files.filter(isFolder).map(file => file.id))
     // Deleting a folder deletes what is in it; files outside any known folder are removed one by one.
     const targets = files.filter(file => isFolder(file) || !folders.has(file.parents?.[0] ?? ''))
-    await Promise.all(targets.map(file => this.remove(userId, file.id)))
+    await Promise.all(targets.map(file => (trash ? this.trash(userId, file.id) : this.remove(userId, file.id))))
     this.forget(userId, files.map(file => file.id))
     this.dropNoteCaches(userId, noteId)
   }
@@ -672,15 +689,80 @@ export class DriveStorage implements NoteStorage {
     checkUser(userId); checkNote(noteId)
     // Not under the note's write locks: a write in flight must lose to the delete, not hold it up.
     const files = await this.snapshot(userId, noteId, true)
-    await this.removeAll(userId, noteId, files)
+    await this.removeAll(userId, noteId, files, this.policy(userId).trashOnDelete)
     await rm(this.localDir(userId, noteId), { recursive: true, force: true })
+  }
+
+  /**
+   * The one question asked before any local audio is removed: does Drive hold this exact file (same name, same size)?
+   * Found through a fresh listing, then looked up directly by id: search lags and this process remembers files it wrote,
+   * a lookup by id is the truth. If Drive cannot say (unreachable, access revoked, the file was deleted or trashed by
+   * hand in Drive) the answer is no and the local copy stays: it may be the only one.
+   */
+  private async confirmedOnDrive(userId: string, noteId: string, filename: string, size: number): Promise<boolean> {
+    try {
+      const files = await this.snapshot(userId, noteId, true)
+      const entry = metaOf(files) ? fileNamed(files, filename) : undefined
+      if (!entry) return false
+      const response = await this.api(userId, 'files.get', token => this.request(`${this.apiBase}/files/${entry.id}?fields=id,size,trashed`, token), { accept: [404] })
+      if (response.status === 404) { await discard(response); return false }
+      const found = (await response.json()) as { size?: string; trashed?: boolean }
+      return found.trashed !== true && found.size !== undefined && Number(found.size) === size
+    } catch { return false }
   }
 
   async releaseAudio(userId: string, noteId: string): Promise<void> {
     checkUser(userId); checkNote(noteId)
-    if (this.retainAudio !== 'drop-after-digest') return
+    if (this.policy(userId).retainAudio !== 'drop-after-digest') return
     const dir = this.localDir(userId, noteId)
     const names = await readdir(dir).catch(() => [] as string[])
-    await Promise.all(names.filter(isAudioFile).map(name => rm(join(dir, name), { force: true })))
+    for (const name of names.filter(file => isAudioFile(file) && !file.endsWith('.tmp'))) {
+      const path = join(dir, name)
+      const size = await stat(path).then(info => info.size, () => null)
+      if (size !== null && (await this.confirmedOnDrive(userId, noteId, name, size))) await rm(path, { force: true })
+    }
+  }
+
+  /** The finished audio files in a person's cache (never `state.json`, never a temp file), and how long stale temp files lie around. */
+  private async cachedAudio(userId: string, sweep = false): Promise<Array<{ noteId: string; name: string; path: string; size: number; at: number }>> {
+    const root = join(this.cacheDir, checkUser(userId))
+    const found: Array<{ noteId: string; name: string; path: string; size: number; at: number }> = []
+    for (const noteId of (await readdir(root).catch(() => [] as string[])).filter(name => UUID.test(name))) {
+      const dir = join(root, noteId)
+      for (const name of await readdir(dir).catch(() => [] as string[])) {
+        const path = join(dir, name)
+        const info = await stat(path).catch(() => null)
+        if (!info?.isFile()) continue
+        if (name.endsWith('.tmp')) { if (sweep && this.now() - info.mtimeMs > STALE_TMP_MS) await rm(path, { force: true }); continue }
+        if (isAudioFile(name)) found.push({ noteId, name, path, size: info.size, at: info.mtimeMs })
+      }
+    }
+    return found
+  }
+
+  async cacheUsage(userId: string): Promise<CacheUsage> {
+    const files = await this.cachedAudio(userId)
+    return { bytes: files.reduce((sum, file) => sum + file.size, 0), files: files.length }
+  }
+
+  async trimCache(userId: string): Promise<CacheTrim> {
+    checkUser(userId)
+    const result: CacheTrim = { freedFiles: 0, freedBytes: 0, skipped: 0 }
+    const files = await this.cachedAudio(userId, true)
+    const cap = this.policy(userId).maxCacheBytes
+    let total = files.reduce((sum, file) => sum + file.size, 0)
+    if (!(cap > 0) || total <= cap) return result
+    for (const file of files.sort((a, b) => a.at - b.at || a.path.localeCompare(b.path))) {
+      if (total <= cap) break
+      if (this.now() - file.at < YOUNG_MS) { result.skipped += 1; continue }
+      if (!(await this.confirmedOnDrive(userId, file.noteId, file.name, file.size))) { result.skipped += 1; continue }
+      const current = await stat(file.path).catch(() => null)
+      if (!current || current.size !== file.size) continue // replaced or gone while Drive was being asked
+      await rm(file.path, { force: true })
+      total -= file.size
+      result.freedFiles += 1
+      result.freedBytes += file.size
+    }
+    return result
   }
 }
