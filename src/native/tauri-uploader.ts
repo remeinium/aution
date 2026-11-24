@@ -9,9 +9,10 @@
  */
 import { addPluginListener, invoke } from '@tauri-apps/api/core'
 import { notifyChanged } from '../lib/changes'
-import { getAudio, getNote, listNotes, onNoteDeleted, removeAudio, updateNote } from '../lib/db'
+import { getAudio, getNote, listNotes, onNoteDeleted, updateNote } from '../lib/db'
 import { isSignedIn, normalizeEndpoint } from '../lib/endpoint'
 import { extensionFor } from '../lib/mime'
+import { applyRetention } from '../lib/retention'
 import { loadSettings } from '../lib/settings'
 import type { FlushOptions } from '../lib/uploader'
 import type { Note, Settings } from '../lib/types'
@@ -30,6 +31,7 @@ export async function reconcile(): Promise<Outbox> {
   const settings = await loadSettings()
   const now = Date.now()
   let changed = false
+  let anyDone = false
   for (const upload of uploads) {
     const note = await getNote(upload.id)
     if (!note) { await call('forget', { id: upload.id }); continue } // removed from this device meanwhile
@@ -37,14 +39,11 @@ export async function reconcile(): Promise<Outbox> {
     const patch = patchFromUpload(note, upload, isSignedIn(settings) ? waitingFor : 'signin', now)
     if (patch) { await updateNote(upload.id, patch); changed = true }
     if (upload.state === 'done') {
-      if (settings.keepAfterUpload === 0 && !note.audioRemoved) {
-        await removeAudio(upload.id)
-        await updateNote(upload.id, { audioRemoved: true })
-        changed = true
-      }
+      anyDone = true
       await call('forget', { id: upload.id })
     }
   }
+  if (anyDone) await applyRetention() // after the notes above became "uploaded"; applies "Remove right away" and the other rules
   for (const id of staged) if (!(await getNote(id))) await call('forget', { id }) // audio of a note removed meanwhile
   if (changed) notifyChanged()
   return { queued: new Map(uploads.filter(upload => upload.state !== 'done').map(upload => [upload.id, upload])), staged: new Set(staged) }

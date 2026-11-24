@@ -1,9 +1,10 @@
-import { getAudio, getNote, listNotes, removeAudio, updateNote } from './db'
+import { getAudio, getNote, listNotes, updateNote } from './db'
 import { notifyChanged } from './changes'
 import { isSignedIn, normalizeEndpoint } from './endpoint'
 import { errorMessage } from './errors'
 import { extensionFor } from './mime'
 import { ServerError, authHeaders, editOnServer } from './server'
+import { applyRetention } from './retention'
 import { classifyStatus, retryDelayMs, statusMessage, uploadTimeoutMs } from './rules'
 import { loadSettings } from './settings'
 import { isAndroidApp } from '../native/platform'
@@ -76,10 +77,7 @@ async function uploadOne(id: string, settings: Settings): Promise<void> {
     const outcome = classifyStatus(response.status)
     if (outcome === 'ok') {
       await updateNote(id, { status: 'uploaded', uploadedAt: Date.now(), lastError: null, nextAttemptAt: null })
-      if (settings.keepAfterUpload === 0) {
-        await removeAudio(id)
-        await updateNote(id, { audioRemoved: true })
-      }
+      await applyRetention() // "Remove right away" (and the other rules) are applied in one place
     } else if (outcome === 'retry') {
       const retryAfter = Number(response.headers.get('Retry-After')) || 0
       await updateNote(id, { status: 'local', lastError: statusMessage(response.status), nextAttemptAt: Date.now() + retryDelayMs(attempts, Math.random, retryAfter) })
