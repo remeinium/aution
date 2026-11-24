@@ -30,6 +30,23 @@ export const OWNER_ID = 'owner'
  */
 export type RetainAudio = 'keep' | 'drop-after-digest'
 
+/**
+ * What one person has chosen for how this machine treats their notes (see prefs.ts). Nothing here deletes by default:
+ * a cap of 0 means no limit. Only a backend with a durable copy elsewhere (Drive) ever applies it.
+ */
+export interface StoragePolicy {
+  retainAudio: RetainAudio
+  /** Most bytes of audio the local cache may hold; 0 = no limit. */
+  maxCacheBytes: number
+  /** A user's delete moves the note to the backend's trash (recoverable) instead of erasing it. */
+  trashOnDelete: boolean
+}
+export type PolicyProvider = (userId: string) => StoragePolicy
+
+/** What a cache pass did. `skipped` are files it would have freed but could not prove are safe elsewhere (or were too new). */
+export interface CacheTrim { freedFiles: number; freedBytes: number; skipped: number }
+export interface CacheUsage { bytes: number; files: number }
+
 /** What goes in: whole bytes, or a stream (audio). */
 export type Payload = Uint8Array | ReadableStream<Uint8Array>
 
@@ -83,6 +100,14 @@ export interface NoteStorage {
    * note that is gone. A no-op under `keep`.
    */
   releaseAudio(userId: string, noteId: string): Promise<void>
+
+  /**
+   * Optional. Keeps the local audio cache under the person's size cap, oldest first. Only a file the durable store is
+   * confirmed to hold (same name, same size) is ever removed: if that cannot be shown, the local copy stays.
+   */
+  trimCache?(userId: string): Promise<CacheTrim>
+  /** Optional. How much audio this machine holds for the person. */
+  cacheUsage?(userId: string): Promise<CacheUsage>
 
   /**
    * Optional. Where each note can be opened in the backend's own web interface (a Google Drive folder), by note id.

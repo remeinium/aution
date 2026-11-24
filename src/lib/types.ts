@@ -44,10 +44,12 @@ export interface Settings {
   autoUpload: boolean
   /** Android app only: upload on unmetered networks (Wi-Fi) only, never on mobile data. */
   wifiOnly: boolean
-  /** Days the audio stays on this device after upload. 0 removes it straight away, -1 keeps it. */
+  /** Days the audio stays on this device after upload. 0 removes it straight away, -1 (the default) keeps it. */
   keepAfterUpload: number
-  /** Free up the oldest audio on this device when it adds up to more than this many MB. 0 turns it off. */
+  /** Free up the oldest audio on this device when it adds up to more than this many MB. 0 (the default) turns it off. */
   storageLimitMb: number
+  /** Internal: which generation of these settings is stored, so old defaults can be migrated once (see settings.ts). */
+  settingsVersion: number
   /** Opus bits per second. */
   bitrate: number
   echoCancellation: boolean
@@ -74,8 +76,10 @@ export const DEFAULT_SETTINGS: Settings = {
   deviceName: typeof navigator === 'undefined' ? 'This device' : guessDeviceName(navigator.userAgent),
   autoUpload: true,
   wifiOnly: false,
-  keepAfterUpload: 7,
-  storageLimitMb: 250,
+  // Nothing is ever removed unless the person chooses it (Settings > Storage).
+  keepAfterUpload: -1,
+  storageLimitMb: 0,
+  settingsVersion: 2,
   bitrate: 32000,
   echoCancellation: false,
   noiseSuppression: true,

@@ -17,6 +17,8 @@ export interface PipelineStatus {
   needs: string[]
 }
 
+const TRIM_EVERY_MS = 10 * 60_000
+
 /** Moves each note through transcribe → digest → file. Every stage is saved to disk, so a restart picks up where it stopped. */
 export class Pipeline {
   private readonly brain: Brain
@@ -31,6 +33,8 @@ export class Pipeline {
   private pausedUntil = 0
   /** How many limits in a row, for when the service does not say when it frees up. */
   private limitStreak = 0
+  private lastTrim = 0
+  private trimming = false
 
   constructor(brain: Brain, options: PipelineOptions = {}) {
     this.brain = brain
@@ -93,6 +97,22 @@ export class Pipeline {
       // Reading one note's state can fail on its own (a Drive call timing out); the rest of this person's notes still get their turn.
       try { await this.process(id) } catch (error) { this.log(`could not work on ${id.slice(0, 8)} this time: ${errorText(error)}`) }
     }
+    await this.trimCache()
+  }
+
+  /**
+   * Keeps this person's local audio cache under the size they chose. Asked after every pass but run at most every 10
+   * minutes (it reads a directory and asks Drive about each file it would remove); `force` is for when they just
+   * changed the setting. Never fails a note: a cache that could not be trimmed is trimmed next time.
+   */
+  async trimCache(force = false): Promise<void> {
+    if (this.trimming || (!force && Date.now() - this.lastTrim < TRIM_EVERY_MS)) return
+    this.trimming = true
+    this.lastTrim = Date.now()
+    try {
+      const done = await this.brain.store.trimCache()
+      if (done && done.freedFiles) this.log(`freed ${done.freedFiles} cached recording${done.freedFiles === 1 ? '' : 's'} (${Math.round(done.freedBytes / 1024 / 1024)} MB); Drive still has them`)
+    } catch (error) { this.log(`could not trim the audio cache: ${errorText(error)}`) } finally { this.trimming = false }
   }
 
   /** Applies the storage's retainAudio policy. Failing to evict a cache is not a reason to fail the note. */

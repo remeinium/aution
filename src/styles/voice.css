@@ -120,6 +120,7 @@ h2 { font-size: var(--font-size-section); line-height: 1.2; font-weight: 500; le
 /* Forms and settings. */
 .settings-section { margin-top: 40px; padding: 26px; border: 1px solid var(--color-border); border-radius: var(--radius-card); background: var(--color-surface); }
 .settings-section h2 { margin-bottom: 8px; font-size: 22px; }
+.settings-subhead { margin: 28px 0 0; padding-top: 22px; border-top: 1px solid var(--color-border); font-size: 15px; font-weight: 550; letter-spacing: -.01em; }
 .field { display: block; margin-top: 18px; }
 .field-label { display: block; margin-bottom: 8px; color: var(--color-text-secondary); font-size: 12px; }
 .field input:not([type="checkbox"]), .field select { display: block; width: 100%; min-height: 44px; padding: 11px 12px; border: 1px solid #3a3a3a; border-radius: 10px; color: var(--color-text); background: var(--color-canvas); font-size: 14px; }

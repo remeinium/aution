@@ -5,7 +5,7 @@ import { parsePairing } from './lib/endpoint'
 import { useNotes, useOnline, useSettings, useToast } from './lib/hooks'
 import { SettingsProvider, ToastProvider } from './lib/providers'
 import { syncNames } from './lib/names'
-import { purgeToLimit, purgeUploadedAudio } from './lib/notes'
+import { applyRetention } from './lib/retention'
 import { recoverInterrupted } from './lib/recovery'
 import { kickUploads } from './lib/uploader'
 import { GuidePage } from './pages/GuidePage'
@@ -68,15 +68,21 @@ function Shell() {
     return () => { clearInterval(timer); document.removeEventListener('visibilitychange', sync); window.removeEventListener('online', sync) }
   }, [settings.endpoint, settings.token])
 
-  // Keep the audio on this device under the person's limit (oldest first, the newest notes stay).
-  useEffect(() => { void purgeToLimit(settings.storageLimitMb).catch(() => 0) }, [notes, settings.storageLimitMb])
+  // The person's cleanup rules (Settings > Storage). By default nothing is removed. Applied whenever notes or the rules change,
+  // at launch (this effect runs on mount), when the app comes back to the front, and hourly while it stays open.
+  useEffect(() => { void applyRetention() }, [notes, settings.keepAfterUpload, settings.storageLimitMb])
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') void applyRetention() }
+    document.addEventListener('visibilitychange', onVisible)
+    const timer = setInterval(() => void applyRetention(), 3_600_000)
+    return () => { document.removeEventListener('visibilitychange', onVisible); clearInterval(timer) }
+  }, [])
 
-  // Boot: rebuild interrupted recordings, tidy old audio, then send whatever is waiting.
+  // Boot: rebuild interrupted recordings, then send whatever is waiting.
   useEffect(() => {
     void (async () => {
       const recovered = await recoverInterrupted().catch(() => 0)
       if (recovered) toast(`Recovered ${recovered} unfinished ${recovered === 1 ? 'recording' : 'recordings'} from earlier.`, { durationMs: 8000 })
-      await purgeUploadedAudio(settings.keepAfterUpload).catch(() => 0)
       kickUploads({ ignoreBackoff: true })
     })()
     // Runs once per launch on purpose.

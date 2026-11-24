@@ -1,4 +1,4 @@
-import { deleteNoteCompletely, getAudio, getNote, listNotes, putNote, removeAudio, saveAudio, updateNote } from './db'
+import { deleteNoteCompletely, getAudio, getNote, listNotes, putNote, saveAudio, updateNote } from './db'
 import { notifyChanged } from './changes'
 import { extensionFor } from './mime'
 import { deleteOnServer } from './server'
@@ -71,77 +71,6 @@ export async function deleteEverywhere(id: string): Promise<void> {
 export async function retryNote(id: string): Promise<void> {
   await updateNote(id, { status: 'local', nextAttemptAt: null, attempts: 0, lastError: null })
   notifyChanged()
-}
-
-/** Removes uploaded audio from this device once it is older than `keepDays`. -1 keeps everything. */
-export async function purgeUploadedAudio(keepDays: number, now = Date.now()): Promise<number> {
-  if (keepDays < 0) return 0
-  let count = 0
-  for (const note of await listNotes()) {
-    if (note.status !== 'uploaded' || note.audioRemoved || note.uploadedAt === null) continue
-    if (now - note.uploadedAt >= keepDays * 86_400_000) {
-      await removeAudio(note.id)
-      await updateNote(note.id, { audioRemoved: true })
-      count += 1
-    }
-  }
-  if (count) notifyChanged()
-  return count
-}
-
-/** The newest notes always keep their audio when space is freed automatically. */
-export const KEEP_NEWEST = 5
-
-const newestFirst = (a: Note, b: Note) => b.createdAt - a.createdAt
-
-/**
- * Which notes' audio to remove so the audio left on this device adds up to no more than `limitMb`. Oldest first. Only a note
- * that has reached the server is ever chosen (the audio on the device would be its only copy otherwise), and the newest
- * `keepNewest` notes are never chosen. Nothing is chosen while under the limit, or when the limit is 0 (off).
- */
-export function pickAudioForLimit(notes: Note[], limitMb: number, keepNewest = KEEP_NEWEST): string[] {
-  if (!(limitMb > 0)) return []
-  const limit = limitMb * 1024 * 1024
-  const saved = notes.filter(note => note.status !== 'recording')
-  const withAudio = saved.filter(note => !note.audioRemoved)
-  let total = withAudio.reduce((sum, note) => sum + note.size, 0)
-  if (total <= limit) return []
-  const protectedIds = new Set([...saved].sort(newestFirst).slice(0, keepNewest).map(note => note.id))
-  const chosen: string[] = []
-  for (const note of withAudio.filter(item => item.status === 'uploaded' && !protectedIds.has(item.id)).sort((a, b) => a.createdAt - b.createdAt)) {
-    if (total <= limit) break
-    chosen.push(note.id)
-    total -= note.size
-  }
-  return chosen
-}
-
-/** The audio of the newest `count` notes, for the person who wants those freed as well. Only notes already on the server. */
-export function pickNewestAudio(notes: Note[], count = KEEP_NEWEST): string[] {
-  return notes.filter(note => note.status !== 'recording').sort(newestFirst).slice(0, count).filter(note => note.status === 'uploaded' && !note.audioRemoved).map(note => note.id)
-}
-
-async function removeAudioOf(ids: string[]): Promise<number> {
-  for (const id of ids) {
-    await removeAudio(id)
-    await updateNote(id, { audioRemoved: true })
-  }
-  if (ids.length) notifyChanged()
-  return ids.length
-}
-
-let purging = false
-
-/** Frees audio until the device is under the person's limit. Safe to call often. Returns how many notes lost their audio. */
-export async function purgeToLimit(limitMb: number): Promise<number> {
-  if (purging || !(limitMb > 0)) return 0
-  purging = true
-  try { return await removeAudioOf(pickAudioForLimit(await listNotes(), limitMb)) } finally { purging = false }
-}
-
-/** Removes the audio of the newest notes too (only those already on the server). The notes stay in the Library. */
-export async function removeNewestAudio(count = KEEP_NEWEST): Promise<number> {
-  return removeAudioOf(pickNewestAudio(await listNotes(), count))
 }
 
 export async function audioDuration(file: Blob): Promise<number> {

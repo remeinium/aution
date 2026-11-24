@@ -129,3 +129,53 @@ export async function fetchTranscript(settings: Credentials, id: string, fetchIm
   if (response.status !== 200 && response.status !== 202) throw refused(response)
   return (await response.json()) as TranscriptResult
 }
+
+// ---- the server's own options for this person (Settings > Storage > On your server) ----
+
+export interface ServerPrefs {
+  /** `keep`: the server keeps its working copy of the audio. `after-sorting`: it drops it once the note is sorted (Drive keeps the audio). */
+  audioCache: 'keep' | 'after-sorting'
+  /** The server's audio copies are trimmed (oldest first) past this many MB. 0 is no limit. */
+  audioCacheMaxMb: number
+  /** `trash`: a deleted note goes to Google Drive's trash (recoverable for about 30 days). `permanent`: gone for good. */
+  deleteMode: 'trash' | 'permanent'
+}
+
+export interface ServerPreferences {
+  /** False when this person's notes are not in Google Drive: then none of these options apply. */
+  drive: boolean
+  prefs: ServerPrefs
+  defaults: ServerPrefs
+  cache: { bytes: number; files: number } | null
+}
+
+const parsePrefs = (value: unknown): ServerPrefs | null => {
+  const item = value as Partial<ServerPrefs> | null
+  if (!item || (item.audioCache !== 'keep' && item.audioCache !== 'after-sorting') || (item.deleteMode !== 'trash' && item.deleteMode !== 'permanent')) return null
+  if (typeof item.audioCacheMaxMb !== 'number' || !Number.isFinite(item.audioCacheMaxMb) || item.audioCacheMaxMb < 0) return null
+  return { audioCache: item.audioCache, audioCacheMaxMb: item.audioCacheMaxMb, deleteMode: item.deleteMode }
+}
+
+async function readPreferences(response: Response): Promise<ServerPreferences> {
+  const body = (await response.json()) as { drive?: unknown; prefs?: unknown; defaults?: unknown; cache?: { bytes?: unknown; files?: unknown } | null }
+  const prefs = parsePrefs(body.prefs)
+  const defaults = parsePrefs(body.defaults)
+  if (!prefs || !defaults) throw new ServerError('The server sent options this app does not understand. Update the app or the server.', response.status)
+  const cache = body.cache && typeof body.cache.bytes === 'number' && typeof body.cache.files === 'number' ? { bytes: body.cache.bytes, files: body.cache.files } : null
+  return { drive: body.drive === true, prefs, defaults, cache }
+}
+
+/** The server's options for this person. Null when the server cannot say (an older server answers 404, or it is unreachable). */
+export async function fetchPreferences(settings: Credentials, fetchImpl: Fetch = fetch): Promise<ServerPreferences | null> {
+  try {
+    const response = await call(settings, '/v1/preferences', {}, fetchImpl)
+    return response.ok ? await readPreferences(response) : null
+  } catch { return null }
+}
+
+/** Saves a change to the server's options and returns what the server now has. Throws a worded ServerError when it cannot. */
+export async function savePreferences(settings: Credentials, patch: Partial<ServerPrefs>, fetchImpl: Fetch = fetch): Promise<ServerPreferences> {
+  const response = await call(settings, '/v1/preferences', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) }, fetchImpl)
+  if (!response.ok) throw refused(response)
+  return readPreferences(response)
+}

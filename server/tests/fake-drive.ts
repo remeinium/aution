@@ -5,7 +5,8 @@ import type { DriveTokenProvider } from '../src/drive-tokens.ts'
 /**
  * An in-process Google Drive v3, just the subset DriveStorage uses:
  *   files.list (q with appProperties / name / mimeType / parents / trashed, orderBy, paging), files.get (metadata and
- *   alt=media), files.create (metadata), files.delete (permanent, recursive for folders), multipart upload,
+ *   alt=media), files.create (metadata), files.delete (permanent, recursive for folders), files.update with
+ *   `{ trashed: true | false }` (a trashed folder hides its whole subtree from search, like Drive), multipart upload,
  *   resumable upload (session, pieces, status query), and PATCH uploads that replace content atomically.
  *
  * Accounts come from the bearer token: `tok-<account>-<anything>`. Faults: `expire(token)`, `revoke(account)`,
@@ -15,7 +16,7 @@ import type { DriveTokenProvider } from '../src/drive-tokens.ts'
 
 const FOLDER = 'application/vnd.google-apps.folder'
 
-interface Rec { id: string; account: string; name: string; mimeType: string; parents: string[]; appProperties: Record<string, string>; content: Buffer | null; createdAt: number; deletedAt?: number }
+interface Rec { id: string; account: string; name: string; mimeType: string; parents: string[]; appProperties: Record<string, string>; content: Buffer | null; createdAt: number; deletedAt?: number; trashed?: boolean }
 interface Session { account: string; metadata: { name?: string; parents?: string[]; appProperties?: Record<string, string>; mimeType?: string }; targetId: string | null; received: Buffer[]; length: number }
 export interface Seen { method: string; path: string; query: Record<string, string>; status: number; account: string | null }
 export type Inject = { status: number; headers?: Record<string, string>; body?: unknown } | 'drop' | 'drop-after'
@@ -58,9 +59,19 @@ export class FakeDrive {
   revoke(account: string) { this.revoked.add(account) }
   inject(fn: FakeDrive['injector']) { this.injector = fn }
 
-  /** What is really in an account's Drive, with search and lag out of the picture. */
+  /** Trashed here or through a trashed parent folder, as Drive reports `trashed`. */
+  private isTrashed(rec: Rec): boolean {
+    for (let at: Rec | undefined = rec, hops = 0; at && hops < 20; at = this.records.get(at.parents[0] ?? ''), hops += 1) if (at.trashed) return true
+    return false
+  }
+
+  /** What is really in an account's Drive (not trashed, not deleted), with search and lag out of the picture. */
   files(account: string): Array<{ id: string; name: string; parents: string[]; folder: boolean; size: number; appProperties: Record<string, string> }> {
-    return [...this.records.values()].filter(rec => rec.account === account && !rec.deletedAt).map(rec => ({ id: rec.id, name: rec.name, parents: rec.parents, folder: rec.mimeType === FOLDER, size: rec.content?.byteLength ?? 0, appProperties: rec.appProperties }))
+    return [...this.records.values()].filter(rec => rec.account === account && !rec.deletedAt && !this.isTrashed(rec)).map(rec => ({ id: rec.id, name: rec.name, parents: rec.parents, folder: rec.mimeType === FOLDER, size: rec.content?.byteLength ?? 0, appProperties: rec.appProperties }))
+  }
+  /** What is sitting in the account's trash, for "moved to trash, not erased" checks. */
+  trashed(account: string): string[] {
+    return [...this.records.values()].filter(rec => rec.account === account && !rec.deletedAt && this.isTrashed(rec)).map(rec => rec.name)
   }
   content(account: string, name: string, parentName?: string): Buffer | undefined {
     const parent = parentName ? [...this.records.values()].find(rec => rec.account === account && rec.name === parentName && rec.mimeType === FOLDER) : undefined
@@ -113,6 +124,7 @@ export class FakeDrive {
       if (url.pathname === '/drive/v3/files' && method === 'GET') return this.list(account, query, send, fail)
       if (url.pathname === '/drive/v3/files' && method === 'POST') return this.createMetadata(account, body, send, fail)
       if (driveFile && method === 'GET') return this.get(account, driveFile[1] as string, query, response, seen, send, fail)
+      if (driveFile && method === 'PATCH') return this.update(account, driveFile[1] as string, body, send, fail)
       if (driveFile && method === 'DELETE') return this.delete(account, driveFile[1] as string, send, fail)
       if (uploadFile && (method === 'POST' || method === 'PATCH')) return this.upload(account, uploadFile[1] ?? null, query, request, body, send, fail)
       if (isSession && method === 'PUT') return this.piece(url.pathname.slice('/upload/session/'.length), request, body, send, fail)
@@ -146,6 +158,7 @@ export class FakeDrive {
     const now = Date.now()
     const visible = [...this.records.values()].filter(rec => {
       if (rec.account !== account) return false
+      if (this.isTrashed(rec)) return false // every query here is `trashed = false`
       if (rec.deletedAt ? now - rec.deletedAt >= this.searchLagMs : now - rec.createdAt < this.searchLagMs) return false // deleted long ago, or not indexed yet
       if (name !== null && rec.name !== name) return false
       if (mime !== null && rec.mimeType !== mime) return false
@@ -175,11 +188,19 @@ export class FakeDrive {
   private get(account: string, id: string, query: Record<string, string>, response: ServerResponse, seen: Seen, send: (s: number, p?: unknown) => void, fail: (s: number, r: string) => void) {
     const rec = this.mine(account, id)
     if (!rec) return fail(404, 'notFound')
-    if (query.alt !== 'media') return send(200, { ...this.resource(rec), trashed: false })
+    if (query.alt !== 'media') return send(200, { ...this.resource(rec), trashed: this.isTrashed(rec) })
     if (!rec.content) return fail(403, 'fileNotDownloadable')
     seen.status = 200
     response.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Length': String(rec.content.byteLength) })
     response.end(rec.content)
+  }
+
+  private update(account: string, id: string, body: Buffer, send: (s: number, p?: unknown) => void, fail: (s: number, r: string) => void) {
+    const rec = this.mine(account, id)
+    if (!rec) return fail(404, 'notFound')
+    const change = JSON.parse(body.toString('utf8') || '{}') as { trashed?: unknown }
+    if (typeof change.trashed === 'boolean') rec.trashed = change.trashed
+    send(200, { ...this.resource(rec), trashed: this.isTrashed(rec) })
   }
 
   private delete(account: string, id: string, send: (s: number, p?: unknown) => void, fail: (s: number, r: string) => void) {

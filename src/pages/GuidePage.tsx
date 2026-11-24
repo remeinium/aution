@@ -68,7 +68,7 @@ export function GuidePage() {
         <Shot file="note.png" alt="An opened note with its title, tags and an Open in Google Drive button" />
         <ul>
           <li><strong>Remove from this device</strong> only clears the copy on this phone.</li>
-          <li><strong>Delete everywhere</strong> asks twice and removes the recording, the transcript and everything made from it, for good, from your server and this phone.</li>
+          <li><strong>Delete everywhere</strong> asks twice and removes the recording, the transcript and everything made from it from your server and this phone. In Google Drive they go to Drive’s trash (you can restore them for about 30 days), or are deleted permanently if you chose that in Settings, Storage.</li>
         </ul>
       </section>
 
@@ -135,7 +135,7 @@ bearer_token_env_var = "AUTION_KEY"`}</pre>
           <li>The recordings and transcripts are stored in <strong>your</strong> Google Drive.</li>
           <li>The aution server reads them while it works (to transcribe and sort them). Whoever runs that server can, in principle, read them while it does. If that matters to you, run your own server.</li>
           <li>Your recordings are turned into words by a program running on the aution server, and the audio goes nowhere else. The words are read by whatever sorts your notes: ChatGPT (so OpenAI) when you ask it, or the AI service the server owner chose, if any.</li>
-          <li>You can delete any note for good, and disconnect Drive or sign out at any time.</li>
+          <li>You can delete any note, and disconnect Drive or sign out at any time. Settings, Storage lets you choose whether audio is ever removed from your phone or from the server, and whether a deleted note goes to Drive’s trash or is deleted permanently. By default nothing is removed automatically.</li>
         </ul>
       </section>
 

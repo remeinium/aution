@@ -17,6 +17,7 @@ import { handleIngest } from './ingest.ts'
 import { createMcpServer } from './mcp.ts'
 import { OwnerOAuthProvider, staticTokenVerifier, type Approver } from './oauth.ts'
 import { Pairing, PairingError } from './pairing.ts'
+import { PrefsError, UserPrefs } from './prefs.ts'
 import type { Pipeline, PipelineOptions } from './pipeline.ts'
 import { createStorage } from './storage-factory.ts'
 import { LocalStorage } from './storage-local.ts'
@@ -57,8 +58,11 @@ export function createApp(config: Config, options: PipelineOptions = {}, authOpt
   // it keeps its notes on this disk.
   const storageConfig = loadStorageConfig()
   if (storageConfig.backend === 'drive' && !drive) throw new Error('STORAGE_BACKEND=drive needs DRIVE_ENABLED=1 (and Google sign-in, and TOKEN_ENCRYPTION_KEY).')
+  // Each person's own choices about the server's copy of their audio and about deleting. Instance defaults never delete:
+  // keep (or what DRIVE_RETAIN_AUDIO says), no size cap, and a deleted note goes to Drive's trash.
+  const prefs = new UserPrefs(join(config.dataDir, 'prefs.sqlite'), { audioCache: storageConfig.backend === 'drive' && storageConfig.retainAudio === 'drop-after-digest' ? 'after-sorting' : 'keep', audioCacheMaxMb: 0, deleteMode: 'trash' })
   const tenants = new Tenants(config, options, storageConfig.backend === 'drive'
-    ? { owner: new LocalStorage(config.dataDir), shared: createStorage(config.dataDir, storageConfig, { driveTokens: drive as DriveAccounts, ...(authOptions.driveApi ? { driveOptions: authOptions.driveApi } : {}) }) }
+    ? { owner: new LocalStorage(config.dataDir), shared: createStorage(config.dataDir, storageConfig, { driveTokens: drive as DriveAccounts, policy: id => prefs.policyFor(id), ...(authOptions.driveApi ? { driveOptions: authOptions.driveApi } : {}) }) }
     : {})
   const { brain, pipeline } = tenants.owner
   const google = mode === 'google' ? new GoogleAuth({ clientId: config.googleClientId, clientSecret: config.googleClientSecret, redirectUri: `${config.publicUrl}/auth/google/callback`, ...(drive ? { driveRedirectUri: `${config.publicUrl}/auth/drive/callback` } : {}), ...(authOptions.googleEndpoints ? { endpoints: authOptions.googleEndpoints } : {}) }) : null
@@ -169,6 +173,32 @@ export function createApp(config: Config, options: PipelineOptions = {}, authOpt
       if (!drive) { res.status(501).json({ error: 'Google Drive is not set up on this server.' }); return }
       await drive.disconnect(String(res.locals.userId))
       res.json({ ok: true, connected: false })
+    } catch (error) { next(error) }
+  })
+  // How this server treats the person's audio and deleted notes. Only people whose notes are in their own Drive have these
+  // choices: the owner identity keeps its notes on this disk, where the audio is the only copy and nothing may touch it.
+  // Someone who has not connected Drive yet still gets their choices; there is just no cache to measure or trim.
+  const tenantIfConnected = (res: Response) => tenantOf(res).catch(error => { if (error instanceof DriveNotConnected) return null; throw error })
+  const prefsOf = async (res: Response) => {
+    const userId = String(res.locals.userId)
+    const applies = storageConfig.backend === 'drive' && userId !== OWNER_ID
+    const usage = applies ? await (await tenantIfConnected(res))?.brain.store.cacheUsage() ?? null : null
+    return { drive: applies, prefs: prefs.get(userId), defaults: prefs.defaults, cache: usage }
+  }
+  app.get('/v1/preferences', async (_req, res, next) => {
+    try { res.setHeader('Cache-Control', 'no-store'); res.json(await prefsOf(res)) } catch (error) { next(error) }
+  })
+  app.put('/v1/preferences', express.json({ limit: '4kb' }), async (req, res, next) => {
+    try {
+      const userId = String(res.locals.userId)
+      if (storageConfig.backend !== 'drive' || userId === OWNER_ID) { res.status(409).json({ error: 'This server keeps your notes on its own disk, so there is nothing to choose.', code: 'no-drive-storage' }); return }
+      try { prefs.set(userId, req.body) } catch (error) {
+        if (error instanceof PrefsError) { res.status(400).json({ error: error.message }); return }
+        throw error
+      }
+      void (await tenantIfConnected(res))?.pipeline.trimCache(true) // a lower cap takes effect now, not at the next pass
+      res.setHeader('Cache-Control', 'no-store')
+      res.json(await prefsOf(res))
     } catch (error) { next(error) }
   })
   app.get('/v1/status', async (_req, res, next) => { try { res.json(await (await tenantOf(res)).pipeline.status()) } catch (error) { next(error) } })
@@ -355,6 +385,7 @@ export function createApp(config: Config, options: PipelineOptions = {}, authOpt
       provider?.close()
       drive?.close()
       agentKeys?.close()
+      prefs.close()
       users.close()
       devices.close()
       await tenants.close()
