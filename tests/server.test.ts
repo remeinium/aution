@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { PairingUnavailable, ServerError, authHeaders, deleteOnServer, disconnectThisDevice, editOnServer, fetchAccount, fetchServerNotes, pollPairing, startPairing } from '../src/lib/server'
+import { describe, expect, it, vi } from 'vitest'
+import { PairingUnavailable, ServerError, authHeaders, deleteOnServer, disconnectThisDevice, editOnServer, fetchAccount, fetchPreferences, fetchServerNotes, pollPairing, savePreferences, startPairing } from '../src/lib/server'
 
 const settings = { endpoint: 'vb.example.com/', token: 'vbd_secret' }
 type Seen = { url: string; method?: string; headers: Record<string, string>; body?: string }
@@ -118,5 +118,33 @@ describe('the names the server has for the notes', () => {
     expect(await fetchServerNotes(settings, answer({}, 401).fetchImpl)).toBeNull()
     expect(await fetchServerNotes(settings, answer({ notes: 'x' }).fetchImpl)).toBeNull()
     expect(await fetchServerNotes(settings, broken)).toBeNull()
+  })
+})
+
+describe('the server\'s own options (preferences)', () => {
+  const creds = { endpoint: 'https://notes.example.com', token: 'vbd_x' }
+  const body = { drive: true, prefs: { audioCache: 'keep', audioCacheMaxMb: 0, deleteMode: 'trash' }, defaults: { audioCache: 'keep', audioCacheMaxMb: 0, deleteMode: 'trash' }, cache: { bytes: 1024, files: 2 } }
+  const reply = (status: number, json?: unknown) => vi.fn(async () => new Response(json === undefined ? null : JSON.stringify(json), { status })) as unknown as typeof fetch
+
+  it('reads them, and says nothing when the server is older (404) or unreachable', async () => {
+    expect(await fetchPreferences(creds, reply(200, body))).toEqual(body)
+    expect(await fetchPreferences(creds, reply(404))).toBeNull()
+    expect(await fetchPreferences(creds, (async () => { throw new Error('offline') }) as unknown as typeof fetch)).toBeNull()
+    expect(await fetchPreferences(creds, reply(200, { ...body, prefs: { audioCache: 'wat' } }))).toBeNull()
+  })
+
+  it('sends only what changed, and returns what the server now has', async () => {
+    const fetchImpl = reply(200, { ...body, prefs: { ...body.prefs, deleteMode: 'permanent' } })
+    const saved = await savePreferences(creds, { deleteMode: 'permanent' }, fetchImpl)
+    expect(saved.prefs.deleteMode).toBe('permanent')
+    const [url, init] = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('https://notes.example.com/v1/preferences')
+    expect(init.method).toBe('PUT')
+    expect(init.body).toBe(JSON.stringify({ deleteMode: 'permanent' }))
+  })
+
+  it('explains a refusal instead of pretending it was saved', async () => {
+    await expect(savePreferences(creds, { audioCacheMaxMb: 5 }, reply(401))).rejects.toThrow(/no longer connected/)
+    await expect(savePreferences(creds, { audioCacheMaxMb: 5 }, reply(409, { error: 'x' }))).rejects.toThrow(/409/)
   })
 })

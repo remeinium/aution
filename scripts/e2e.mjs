@@ -403,18 +403,18 @@ await step('disconnecting cuts this device off on the server', async () => {
   await tablet.context().close()
 })
 
-await step('frees old audio past the size limit (the newest 5 stay), and the button frees the latest 5 too', async () => {
+await step('nothing is removed by default; a chosen size limit frees old audio (the newest 5 stay); "Free up space now" previews, then frees the rest', async () => {
   const fresh = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
   const page = await fresh.newPage()
   watch(page)
   await page.goto(`${APP}/`)
   await page.getByRole('heading', { name: 'Record', level: 1 }).waitFor()
-  // Eight notes that reached the server, 100 MB each (n1 the oldest): 800 MB on a device whose limit is 250.
+  // Eight notes that reached the server, 100 MB each (n1 the oldest), uploaded a month ago: 800 MB on the device.
   const seed = () => page.evaluate(async () => {
     const db = await new Promise((resolve, reject) => { const request = indexedDB.open('trapper-voice'); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error) })
     const tx = db.transaction('notes', 'readwrite')
     for (let n = 1; n <= 8; n += 1) {
-      tx.objectStore('notes').put({ id: `n${n}`, createdAt: Date.now() - (9 - n) * 3_600_000, durationMs: 60_000, mime: 'audio/webm', size: 100 * 1024 * 1024, title: `Note ${n}`, tags: [], marks: [], status: 'uploaded', attempts: 0, nextAttemptAt: null, lastError: null, uploadedAt: Date.now(), recovered: false, source: 'record', audioRemoved: false })
+      tx.objectStore('notes').put({ id: `n${n}`, createdAt: Date.now() - (9 - n) * 3_600_000, durationMs: 60_000, mime: 'audio/webm', size: 100 * 1024 * 1024, title: `Note ${n}`, tags: [], marks: [], status: 'uploaded', attempts: 0, nextAttemptAt: null, lastError: null, uploadedAt: Date.now() - 30 * 86_400_000, recovered: false, source: 'record', audioRemoved: false })
     }
     await new Promise(resolve => { tx.oncomplete = resolve })
   })
@@ -425,21 +425,24 @@ await step('frees old audio past the size limit (the newest 5 stay), and the but
   })
   await seed()
   await page.reload()
-  await until(async () => (await removed()).join() === 'n1,n2,n3', 'the three oldest notes to lose their audio')
-  assert.deepEqual(await removed(), ['n1', 'n2', 'n3']) // n4..n8 are the newest five and stay, even though 500 MB is over the limit
+  await page.waitForTimeout(1500)
+  assert.deepEqual(await removed(), []) // the defaults keep everything, however old or large
 
+  // The person picks a 250 MB limit: the three oldest go, the newest five stay (500 MB is still over the limit).
   await page.goto(`${APP}/#/settings`)
-  const limit = page.getByLabel('Free up space when the audio on this device passes (MB)')
-  assert.equal(await limit.inputValue(), '250')
-  await page.getByRole('button', { name: 'Also free the latest 5 recordings' }).click()
-  await page.getByRole('button', { name: 'Tap again to remove 5' }).click()
-  await until(async () => (await removed()).length === 8, 'the latest five to lose their audio too')
+  await page.getByLabel('Limit the audio kept on this device').selectOption('250')
+  await until(async () => (await removed()).join() === 'n1,n2,n3', 'the three oldest notes to lose their audio')
+  assert.deepEqual(await removed(), ['n1', 'n2', 'n3'])
 
-  // Typing a new limit takes effect when the field is left, not on every key: a half-typed "2" must not delete anything.
-  await seed()
-  await limit.fill('0')
-  await limit.blur()
-  await until(async () => (await page.evaluate(() => new Promise(resolve => { const request = indexedDB.open('trapper-voice'); request.onsuccess = () => { const get = request.result.transaction('kv').objectStore('kv').get('settings'); get.onsuccess = () => resolve(get.result?.storageLimitMb) } }))) === 0, 'the limit 0 to be saved')
+  // "Free up space now" says what it will do before it does it, and Cancel changes nothing.
+  await page.getByRole('button', { name: /Free up space now/ }).click()
+  await page.getByText('This removes the audio of 5 recordings (500 MB) from this device.').waitFor()
+  await page.getByRole('button', { name: 'Cancel' }).click()
+  assert.equal((await removed()).length, 3)
+  await page.getByRole('button', { name: /Free up space now/ }).click()
+  await page.getByRole('button', { name: /^Remove 500/ }).click()
+  await until(async () => (await removed()).length === 8, 'the rest to lose their audio too')
+  await page.getByText(/Last cleanup today/).waitFor()
   await page.screenshot({ path: join(shots, '15-storage-limit.png') })
   await fresh.close()
 })

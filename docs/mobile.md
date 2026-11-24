@@ -324,6 +324,26 @@ armv7 phone.
   `REQUEST_INSTALL_PACKAGES` and a FileProvider for `cacheDir/updates`). Android asks once to allow installs from aution.
 - `APP_VERSION` now comes from `package.json` at build time (it was a stale copy saying 0.2.0).
 
+### After 0.2.2: nothing is removed unless you choose it (0.2.3)
+
+- **No default deletes anything.** Before 0.2.3 the app removed audio from the phone by default (7 days after upload, and
+  past 250 MB). Now both start off ("Keep forever", "No limit"). A phone that still holds the old defaults is moved to
+  "keep" once (`migrateSettings`, `settingsVersion` 2); a value that differs from the old defaults is a choice and stays.
+  The old defaults cannot be told apart from a choice, so someone who really picked 7 days or 250 MB sets it again.
+- **One place decides** (`src/lib/retention.ts`): the planner `planRetention` (pure, tested) turns the person's rules
+  into a list; one executor removes the audio and writes the log. It replaces five scattered checks. The rule that
+  matters is `isSafeToRemove`: only audio of a note whose upload the server confirmed may go, checked again at the moment
+  of removal. The note itself always stays in the Library.
+- **Settings, Storage.** On this device: keep audio forever / 30 / 7 / 1 days / remove right away; a size limit (off,
+  250 MB, 500 MB, 1 GB, 2 GB; the newest 5 notes are always spared); "Free up space now" shows what it would remove
+  (count and size) before it does; the last cleanup is shown. On your server (only when the notes are in Google Drive and
+  the server is 0.2.3 or newer): the server's audio copy (keep, or remove once sorted), a limit for those copies, and
+  whether a deleted note goes to Google Drive's trash (recoverable for about 30 days) or is deleted permanently. These are
+  stored per person on the server (`GET`/`PUT /v1/preferences`), so every device of that person sees the same choice.
+- **Update check.** Silent at startup (and when the app returns to the front, at most every 6 hours). "Not now" is
+  remembered for that version, so the banner does not come back at every launch, only for a newer release. Settings,
+  About shows the version and "Check for updates" (asks GitHub right away).
+
 ### Phase 6: iOS
 
 *To be written.*

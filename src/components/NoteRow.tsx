@@ -29,7 +29,7 @@ export function NoteRow({ note, now, onDelete }: { note: Note; now: number; onDe
   const heading = note.title || note.remoteTitle || defaultTitle(note.createdAt)
   const panel = `note-${note.id}`
 
-  // Deleting from the server cannot be undone, so it takes two deliberate taps; the second must come within a few seconds.
+  // Deleting from the server is hard to undo (Google Drive's trash is the only way back), so it takes two deliberate taps; the second must come within a few seconds.
   useEffect(() => {
     if (!confirming) return
     const timer = setTimeout(() => setConfirming(false), 6000)
@@ -54,7 +54,7 @@ export function NoteRow({ note, now, onDelete }: { note: Note; now: number; onDe
     setDeleting(true)
     try {
       await deleteEverywhere(note.id)
-      toast('Deleted everywhere: the recording and its transcript are gone from your server and this device.')
+      toast('Deleted from your server and this device. In Google Drive it follows your delete setting (Settings, Storage).')
     } catch (error) {
       setConfirming(false)
       setDeleting(false)
